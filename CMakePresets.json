@@ -1,0 +1,38 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 1
+  },
+  "configurePresets": [
+    {
+      "name": "default",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "${sourceDir}/toolchain.cmake"
+    },
+    {
+      "name": "x64-Debug",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "x64-Release",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "x64-RelWithDebInfo",
+      "inherits": "default",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ]
+}
