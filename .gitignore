@@ -406,3 +406,5 @@ FodyWeavers.xsd
 compile_commands.json
 
 memory-vis/
+
+assets/

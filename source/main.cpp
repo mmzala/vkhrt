@@ -1,7 +1,7 @@
-#include <spdlog/spdlog.h>
+#include "application.hpp"
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char* argv[])
 {
-	spdlog::warn("spdlog");
-	return 0;
+    Application app {};
+    return app.Run();
 }
