@@ -25,10 +25,19 @@ struct Node
 
 struct Mesh
 {
+    enum class PrimitiveType : uint8_t
+    {
+        eTriangles,
+        eLines,
+    };
+
+    PrimitiveType primitiveType = PrimitiveType::eTriangles;
     uint32_t indexCount {};
     uint32_t firstIndex {};
     uint32_t firstVertex {};
     ResourceHandle<Material> material {};
+
+    [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
 
 struct Model

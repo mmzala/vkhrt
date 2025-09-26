@@ -11,6 +11,21 @@
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
 
+Mesh::PrimitiveType GetPrimitiveType(const aiMesh* aiMesh)
+{
+    switch (aiMesh->mPrimitiveTypes)
+    {
+    case aiPrimitiveType_TRIANGLE:
+        return Mesh::PrimitiveType::eTriangles;
+    case aiPrimitiveType_LINE:
+        return Mesh::PrimitiveType::eLines;
+    default:
+        spdlog::error("[MODEL LOADING] Using unsupported mesh primitive type: {}", aiMesh->mPrimitiveTypes);
+    }
+
+    return Mesh::PrimitiveType::eTriangles;
+}
+
 ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources)
 {
     ImageCreation imageCreation {};
@@ -138,13 +153,13 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std
 Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
+    mesh.primitiveType = GetPrimitiveType(aiMesh);
     mesh.firstIndex = static_cast<uint32_t>(indices.size());
     mesh.firstVertex = static_cast<uint32_t>(vertices.size());
 
     if (aiMesh->HasFaces())
     {
-        // Using aiProcess_Triangulate, so we know that each face has 3 indices
-        mesh.indexCount = aiMesh->mNumFaces * 3;
+        mesh.indexCount = aiMesh->mNumFaces * mesh.GetIndicesPerFaceNum();
         indices.resize(indices.size() + mesh.indexCount);
         uint32_t indexOffset = 0;
 
@@ -272,6 +287,21 @@ glm::mat4 Node::GetWorldMatrix() const
     }
 
     return matrix;
+}
+
+uint32_t Mesh::GetIndicesPerFaceNum() const
+{
+    switch (primitiveType)
+    {
+    case PrimitiveType::eTriangles:
+        return 3;
+    case PrimitiveType::eLines:
+        return 2;
+    default:
+        spdlog::error("[MODEL LOADING] Trying to get number of indices per face using unsupported mesh primitive type");
+    }
+
+    return 0;
 }
 
 ModelLoader::ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext)
