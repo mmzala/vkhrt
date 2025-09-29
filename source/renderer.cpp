@@ -24,7 +24,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _modelLoader = std::make_unique<ModelLoader>(_bindlessResources, _vulkanContext);
 
     const std::vector<std::string> scene = {
-        "assets/helmet/FlightHelmet.gltf",
+        "assets/claire/Claire_HairMain_HQ.gltf",
     };
     for (const auto& modelPath : scene)
     {
@@ -176,7 +176,7 @@ void Renderer::InitializeCamera()
 
     CameraUniformData cameraData {};
     cameraData.projInverse = glm::inverse(projection);
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(0.0f, 1.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(15.0f, 150.0f, 25.0f), glm::vec3(-6.0f, 151.0f, -1.2f), glm::vec3(0.0f, 1.0f, 0.0f)));
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
     BufferCreation uniformBufferCreation {};
@@ -450,11 +450,13 @@ void Renderer::InitializeBLAS()
 {
     for (const auto& model : _models)
     {
-        for (const auto& node : model->nodes)
+        std::shared_ptr<SceneGraph> sceneGraph = model->sceneGraph;
+
+        for (const auto& node : sceneGraph->nodes)
         {
             for (const auto mesh : node.meshes)
             {
-                BLASInput input = InitializeBLASInput(model, node, model->meshes[mesh], _vulkanContext);
+                BLASInput input = InitializeBLASInput(model, node, sceneGraph->meshes[mesh], _vulkanContext);
                 _blases.emplace_back(input, _bindlessResources, _vulkanContext);
             }
         }

@@ -47,31 +47,34 @@ struct Mesh
     [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
 
+struct SceneGraph
+{
+    SceneGraph() = default;
+    NON_COPYABLE(SceneGraph) // If we copied, node parent pointers would be invalidated
+
+    std::string sceneName {};
+    std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer?)
+    std::vector<Mesh> meshes {};
+    std::vector<ResourceHandle<Image>> textures {};
+    std::vector<ResourceHandle<Material>> materials {};
+};
+
 struct ModelCreation
 {
     std::vector<Mesh::Vertex> vertexBuffer {};
     std::vector<uint32_t> indexBuffer {};
-
-    std::string sceneName {};
-    std::vector<Node> nodes {};
-    std::vector<Mesh> meshes {};
-    std::vector<ResourceHandle<Image>> textures {};
-    std::vector<ResourceHandle<Material>> materials {};
+    std::shared_ptr<SceneGraph> sceneGraph {};
 };
 
 struct Model
 {
     Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
 
-    std::unique_ptr<Buffer> vertexBuffer;
-    std::unique_ptr<Buffer> indexBuffer;
+    std::unique_ptr<Buffer> vertexBuffer {};
+    std::unique_ptr<Buffer> indexBuffer {};
     uint32_t verticesCount {};
     uint32_t indexCount {};
-
-    std::vector<Node> nodes {};
-    std::vector<Mesh> meshes {};
-    std::vector<ResourceHandle<Image>> textures {};
-    std::vector<ResourceHandle<Material>> materials {};
+    std::shared_ptr<SceneGraph> sceneGraph {};
 };
 
 class ModelLoader
