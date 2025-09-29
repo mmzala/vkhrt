@@ -25,14 +25,6 @@ struct Node
 
 struct Mesh
 {
-    uint32_t indexCount {};
-    uint32_t firstIndex {};
-    uint32_t firstVertex {};
-    ResourceHandle<Material> material {};
-};
-
-struct Model
-{
     struct Vertex
     {
         glm::vec3 position {};
@@ -40,15 +32,49 @@ struct Model
         glm::vec2 texCoord {};
     };
 
-    std::unique_ptr<Buffer> vertexBuffer;
-    std::unique_ptr<Buffer> indexBuffer;
-    uint32_t verticesCount {};
-    uint32_t indexCount {};
+    enum class PrimitiveType : uint8_t
+    {
+        eTriangles,
+        eLines,
+    };
 
-    std::vector<Node> nodes {};
+    PrimitiveType primitiveType = PrimitiveType::eTriangles;
+    uint32_t indexCount {};
+    uint32_t firstIndex {};
+    uint32_t firstVertex {};
+    ResourceHandle<Material> material {};
+
+    [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
+};
+
+struct SceneGraph
+{
+    SceneGraph() = default;
+    NON_COPYABLE(SceneGraph) // If we copied, node parent pointers would be invalidated
+
+    std::string sceneName {};
+    std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer?)
     std::vector<Mesh> meshes {};
     std::vector<ResourceHandle<Image>> textures {};
     std::vector<ResourceHandle<Material>> materials {};
+};
+
+struct ModelCreation
+{
+    std::vector<Mesh::Vertex> vertexBuffer {};
+    std::vector<uint32_t> indexBuffer {};
+    std::shared_ptr<SceneGraph> sceneGraph {};
+};
+
+struct Model
+{
+    Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
+
+    std::unique_ptr<Buffer> vertexBuffer {};
+    std::unique_ptr<Buffer> indexBuffer {};
+    uint32_t verticesCount {};
+    uint32_t indexCount {};
+    std::shared_ptr<SceneGraph> sceneGraph {};
 };
 
 class ModelLoader
@@ -62,7 +88,8 @@ public:
     [[nodiscard]] std::shared_ptr<Model> LoadFromFile(std::string_view path);
 
 private:
-    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const aiScene* scene, const std::string_view directory);
+    [[nodiscard]] ModelCreation LoadModel(const aiScene* scene, const std::string_view directory);
+    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const ModelCreation& modelCreation);
 
     Assimp::Importer _importer {};
     std::unordered_map<std::string_view, ResourceHandle<Image>> _imageCache {};

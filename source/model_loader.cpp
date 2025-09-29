@@ -11,6 +11,21 @@
 #include <spdlog/spdlog.h>
 #include <stb_image.h>
 
+Mesh::PrimitiveType GetPrimitiveType(const aiMesh* aiMesh)
+{
+    switch (aiMesh->mPrimitiveTypes)
+    {
+    case aiPrimitiveType_TRIANGLE:
+        return Mesh::PrimitiveType::eTriangles;
+    case aiPrimitiveType_LINE:
+        return Mesh::PrimitiveType::eLines;
+    default:
+        spdlog::error("[MODEL LOADING] Using unsupported mesh primitive type: {}", aiMesh->mPrimitiveTypes);
+    }
+
+    return Mesh::PrimitiveType::eTriangles;
+}
+
 ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources)
 {
     ImageCreation imageCreation {};
@@ -135,16 +150,16 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std
     return resources->Materials().Create(materialCreation);
 }
 
-Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Mesh::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
+    mesh.primitiveType = GetPrimitiveType(aiMesh);
     mesh.firstIndex = static_cast<uint32_t>(indices.size());
     mesh.firstVertex = static_cast<uint32_t>(vertices.size());
 
     if (aiMesh->HasFaces())
     {
-        // Using aiProcess_Triangulate, so we know that each face has 3 indices
-        mesh.indexCount = aiMesh->mNumFaces * 3;
+        mesh.indexCount = aiMesh->mNumFaces * mesh.GetIndicesPerFaceNum();
         indices.resize(indices.size() + mesh.indexCount);
         uint32_t indexOffset = 0;
 
@@ -274,6 +289,76 @@ glm::mat4 Node::GetWorldMatrix() const
     return matrix;
 }
 
+uint32_t Mesh::GetIndicesPerFaceNum() const
+{
+    switch (primitiveType)
+    {
+    case PrimitiveType::eTriangles:
+        return 3;
+    case PrimitiveType::eLines:
+        return 2;
+    default:
+        spdlog::error("[MODEL LOADING] Trying to get number of indices per face using unsupported mesh primitive type");
+    }
+
+    return 0;
+}
+
+Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    verticesCount = creation.vertexBuffer.size();
+    indexCount = creation.indexBuffer.size();
+    sceneGraph = creation.sceneGraph;
+
+    // Upload to GPU
+    {
+        // Staging buffers
+        BufferCreation vertexStagingBufferCreation {};
+        vertexStagingBufferCreation.SetName(sceneGraph->sceneName + " - Vertex Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+        Buffer vertexStagingBuffer(vertexStagingBufferCreation, vulkanContext);
+        memcpy(vertexStagingBuffer.mappedPtr, creation.vertexBuffer.data(), sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+
+        BufferCreation indexStagingBufferCreation {};
+        indexStagingBufferCreation.SetName(sceneGraph->sceneName + " - Index Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+        Buffer indexStagingBuffer(indexStagingBufferCreation, vulkanContext);
+        memcpy(indexStagingBuffer.mappedPtr, creation.indexBuffer.data(), sizeof(uint32_t) * creation.indexBuffer.size());
+
+        // GPU buffers
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
+        BufferCreation vertexBufferCreation {};
+        vertexBufferCreation.SetName(sceneGraph->sceneName + " - Vertex Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+        vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, vulkanContext);
+
+        BufferCreation indexBufferCreation {};
+        indexBufferCreation.SetName(sceneGraph->sceneName + " - Index Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+        indexBuffer = std::make_unique<Buffer>(indexBufferCreation, vulkanContext);
+
+        SingleTimeCommands commands(vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            {
+                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, vertexBuffer->buffer, sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, sizeof(uint32_t) * creation.indexBuffer.size()); });
+        commands.SubmitAndWait();
+    }
+}
+
 ModelLoader::ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
     , _bindlessResources(bindlessResources)
@@ -294,79 +379,150 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 
     _imageCache.clear(); // Clear image cache for a new load
     std::string_view directory = path.substr(0, path.find_last_of('/'));
-    return ProcessModel(aiScene, directory);
+
+    ModelCreation modelCreation = LoadModel(aiScene, directory);
+    return ProcessModel(modelCreation);
 }
 
-std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* aiScene, const std::string_view directory)
+ModelCreation ModelLoader::LoadModel(const aiScene* aiScene, const std::string_view directory)
 {
-    std::shared_ptr<Model> model = std::make_shared<Model>();
+    ModelCreation modelCreation {};
+    modelCreation.sceneGraph = std::make_shared<SceneGraph>();
+    SceneGraph& sceneGraph = *modelCreation.sceneGraph;
 
     for (uint32_t i = 0; i < aiScene->mNumMaterials; ++i)
     {
-        model->materials.push_back(ProcessMaterial(aiScene->mMaterials[i], directory, _bindlessResources, model->textures, _imageCache));
+        sceneGraph.materials.push_back(ProcessMaterial(aiScene->mMaterials[i], directory, _bindlessResources, sceneGraph.textures, _imageCache));
     }
-
-    std::vector<Model::Vertex> vertices {};
-    std::vector<uint32_t> indices {};
 
     for (uint32_t i = 0; i < aiScene->mNumMeshes; ++i)
     {
-        model->meshes.push_back(ProcessMesh(aiScene, aiScene->mMeshes[i], model->materials, vertices, indices));
+        sceneGraph.meshes.push_back(ProcessMesh(aiScene, aiScene->mMeshes[i], sceneGraph.materials, modelCreation.vertexBuffer, modelCreation.indexBuffer));
     }
 
-    // Process vertex and index data
+    sceneGraph.sceneName = aiScene->mName.C_Str();
+    sceneGraph.nodes = ProcessNodes(aiScene);
+    return modelCreation;
+}
+
+std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreation)
+{
+    // We don't support pre-processing models with multiple different mesh types
+    Mesh::PrimitiveType firstPrimitiveType = modelCreation.sceneGraph->meshes[0].primitiveType;
+    for (const Mesh& mesh : modelCreation.sceneGraph->meshes)
     {
-        std::string sceneName = aiScene->mName.C_Str();
-        model->verticesCount = vertices.size();
-        model->indexCount = indices.size();
-
-        // Staging buffers
-        BufferCreation vertexStagingBufferCreation {};
-        vertexStagingBufferCreation.SetName(sceneName + " - Vertex Staging Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
-            .SetSize(sizeof(Model::Vertex) * vertices.size());
-        Buffer vertexStagingBuffer(vertexStagingBufferCreation, _vulkanContext);
-        memcpy(vertexStagingBuffer.mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
-
-        BufferCreation indexStagingBufferCreation {};
-        indexStagingBufferCreation.SetName(sceneName + " - Index Staging Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
-            .SetSize(sizeof(uint32_t) * indices.size());
-        Buffer indexStagingBuffer(indexStagingBufferCreation, _vulkanContext);
-        memcpy(indexStagingBuffer.mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
-
-        // GPU buffers
-        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
-
-        BufferCreation vertexBufferCreation {};
-        vertexBufferCreation.SetName(sceneName + " - Vertex Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-            .SetIsMappable(false)
-            .SetSize(sizeof(Model::Vertex) * vertices.size());
-        model->vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
-
-        BufferCreation indexBufferCreation {};
-        indexBufferCreation.SetName(sceneName + " - Index Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-            .SetIsMappable(false)
-            .SetSize(sizeof(uint32_t) * indices.size());
-        model->indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
-
-        SingleTimeCommands commands(_vulkanContext);
-        commands.Record([&](vk::CommandBuffer commandBuffer)
-            {
-                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, model->vertexBuffer->buffer, sizeof(Model::Vertex) * vertices.size());
-                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size()); });
-        commands.SubmitAndWait();
+        if (mesh.primitiveType != firstPrimitiveType)
+        {
+            spdlog::error("[MODEL LOADING] Model \"{}\" contains multiple different mesh primitive types which is not supported!", modelCreation.sceneGraph->sceneName);
+            return nullptr;
+        }
     }
 
-    model->nodes = ProcessNodes(aiScene);
+    // If we have a normal triangle mesh, we can just return
+    if (firstPrimitiveType == Mesh::PrimitiveType::eTriangles)
+    {
+        return std::make_unique<Model>(modelCreation, _vulkanContext);
+    }
 
-    return model;
+    // Create mesh from hair strands
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
+    // We at least need the size of lines
+    std::vector<Mesh::Vertex> newVertexBuffer {};
+    std::vector<uint32_t> newIndexBuffer {};
+
+    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        // Create line segments from hair lines
+        struct LineSegment
+        {
+            glm::vec3 start {};
+            glm::vec3 end {};
+        };
+        std::vector<LineSegment> lineSegments(oldMesh.indexCount / 2);
+        uint32_t indexOffset = 0;
+
+        for (int i = 0; i < lineSegments.size(); ++i)
+        {
+            uint32_t startIndex = modelCreation.indexBuffer[oldMesh.firstIndex + indexOffset];
+            uint32_t endIndex = modelCreation.indexBuffer[oldMesh.firstIndex + indexOffset + 1];
+
+            lineSegments[i].start = modelCreation.vertexBuffer[oldMesh.firstVertex + startIndex].position;
+            lineSegments[i].end = modelCreation.vertexBuffer[oldMesh.firstVertex + endIndex].position;
+            indexOffset += 2;
+        }
+
+        // Create mesh from line segments
+        Mesh& newMesh = newMeshes[meshIndex];
+        newMesh.material = oldMesh.material;
+
+        newMesh.firstIndex = newIndexBuffer.size();
+        newMesh.firstVertex = newVertexBuffer.size();
+
+        for (const LineSegment& segment : lineSegments)
+        {
+            static const std::vector<uint32_t> indices {
+                // Top
+                2, 6, 7,
+                2, 3, 7,
+
+                // Bottom
+                0, 4, 5,
+                0, 1, 5,
+
+                // Left
+                0, 2, 6,
+                0, 4, 6,
+
+                // Right
+                1, 3, 7,
+                1, 5, 7,
+
+                // Front
+                0, 2, 3,
+                0, 1, 3,
+
+                // Back
+                4, 6, 7,
+                4, 5, 7
+            };
+
+            static const std::vector<glm::vec3> vertices {
+                glm::vec3(-1, -1, 1.0), // 0
+                glm::vec3(1, -1, 1.0), // 1
+                glm::vec3(-1, 1, 1.0), // 2
+                glm::vec3(1, 1, 1.0), // 3
+                glm::vec3(-1, -1, -1.0), // 4
+                glm::vec3(1, -1, -1.0), // 5
+                glm::vec3(-1, 1, -1.0), // 6
+                glm::vec3(1, 1, -1.0) // 7
+            };
+
+            constexpr float boxSize = 0.02f;
+            const uint32_t firstVertex = newVertexBuffer.size();
+
+            for (uint32_t index : indices)
+            {
+                newIndexBuffer.push_back(index + firstVertex);
+            }
+
+            for (glm::vec3 pos : vertices)
+            {
+                newVertexBuffer.push_back({ pos * boxSize + segment.start });
+            }
+
+            newMesh.indexCount += indices.size();
+        }
+    }
+
+    sceneGraph.meshes = newMeshes;
+    newModelCreation.vertexBuffer = newVertexBuffer;
+    newModelCreation.indexBuffer = newIndexBuffer;
+
+    return std::make_unique<Model>(newModelCreation, _vulkanContext);
 }
