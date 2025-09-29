@@ -150,7 +150,7 @@ ResourceHandle<Material> ProcessMaterial(const aiMaterial* aiMaterial, const std
     return resources->Materials().Create(materialCreation);
 }
 
-Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Model::Vertex>& vertices, std::vector<uint32_t>& indices)
+Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector<ResourceHandle<Material>>& materials, std::vector<Mesh::Vertex>& vertices, std::vector<uint32_t>& indices)
 {
     Mesh mesh {};
     mesh.primitiveType = GetPrimitiveType(aiMesh);
@@ -304,6 +304,66 @@ uint32_t Mesh::GetIndicesPerFaceNum() const
     return 0;
 }
 
+Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    verticesCount = creation.vertexBuffer.size();
+    indexCount = creation.indexBuffer.size();
+
+    nodes = creation.nodes;
+    meshes = creation.meshes;
+    textures = creation.textures;
+    materials = creation.materials;
+
+    // Upload to GPU
+    {
+        // Staging buffers
+        BufferCreation vertexStagingBufferCreation {};
+        vertexStagingBufferCreation.SetName(creation.sceneName + " - Vertex Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+        Buffer vertexStagingBuffer(vertexStagingBufferCreation, vulkanContext);
+        memcpy(vertexStagingBuffer.mappedPtr, creation.vertexBuffer.data(), sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+
+        BufferCreation indexStagingBufferCreation {};
+        indexStagingBufferCreation.SetName(creation.sceneName + " - Index Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+        Buffer indexStagingBuffer(indexStagingBufferCreation, vulkanContext);
+        memcpy(indexStagingBuffer.mappedPtr, creation.indexBuffer.data(), sizeof(uint32_t) * creation.indexBuffer.size());
+
+        // GPU buffers
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
+        BufferCreation vertexBufferCreation {};
+        vertexBufferCreation.SetName(creation.sceneName + " - Vertex Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+        vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, vulkanContext);
+
+        BufferCreation indexBufferCreation {};
+        indexBufferCreation.SetName(creation.sceneName + " - Index Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+        indexBuffer = std::make_unique<Buffer>(indexBufferCreation, vulkanContext);
+
+        SingleTimeCommands commands(vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            {
+                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, vertexBuffer->buffer, sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, sizeof(uint32_t) * creation.indexBuffer.size());
+            });
+        commands.SubmitAndWait();
+    }
+}
+
 ModelLoader::ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _vulkanContext(vulkanContext)
     , _bindlessResources(bindlessResources)
@@ -324,79 +384,32 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 
     _imageCache.clear(); // Clear image cache for a new load
     std::string_view directory = path.substr(0, path.find_last_of('/'));
-    return ProcessModel(aiScene, directory);
+
+    ModelCreation modelCreation = LoadModel(aiScene, directory);
+    return ProcessModel(modelCreation);
 }
 
-std::shared_ptr<Model> ModelLoader::ProcessModel(const aiScene* aiScene, const std::string_view directory)
+ModelCreation ModelLoader::LoadModel(const aiScene* aiScene, const std::string_view directory)
 {
-    std::shared_ptr<Model> model = std::make_shared<Model>();
+    ModelCreation modelCreation {};
 
     for (uint32_t i = 0; i < aiScene->mNumMaterials; ++i)
     {
-        model->materials.push_back(ProcessMaterial(aiScene->mMaterials[i], directory, _bindlessResources, model->textures, _imageCache));
+        modelCreation.materials.push_back(ProcessMaterial(aiScene->mMaterials[i], directory, _bindlessResources, modelCreation.textures, _imageCache));
     }
-
-    std::vector<Model::Vertex> vertices {};
-    std::vector<uint32_t> indices {};
 
     for (uint32_t i = 0; i < aiScene->mNumMeshes; ++i)
     {
-        model->meshes.push_back(ProcessMesh(aiScene, aiScene->mMeshes[i], model->materials, vertices, indices));
+        modelCreation.meshes.push_back(ProcessMesh(aiScene, aiScene->mMeshes[i], modelCreation.materials, modelCreation.vertexBuffer, modelCreation.indexBuffer));
     }
 
-    // Process vertex and index data
-    {
-        std::string sceneName = aiScene->mName.C_Str();
-        model->verticesCount = vertices.size();
-        model->indexCount = indices.size();
+    modelCreation.sceneName = aiScene->mName.C_Str();
+    modelCreation.nodes = ProcessNodes(aiScene);
+    return modelCreation;
+}
 
-        // Staging buffers
-        BufferCreation vertexStagingBufferCreation {};
-        vertexStagingBufferCreation.SetName(sceneName + " - Vertex Staging Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
-            .SetSize(sizeof(Model::Vertex) * vertices.size());
-        Buffer vertexStagingBuffer(vertexStagingBufferCreation, _vulkanContext);
-        memcpy(vertexStagingBuffer.mappedPtr, vertices.data(), sizeof(Model::Vertex) * vertices.size());
-
-        BufferCreation indexStagingBufferCreation {};
-        indexStagingBufferCreation.SetName(sceneName + " - Index Staging Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
-            .SetSize(sizeof(uint32_t) * indices.size());
-        Buffer indexStagingBuffer(indexStagingBufferCreation, _vulkanContext);
-        memcpy(indexStagingBuffer.mappedPtr, indices.data(), sizeof(uint32_t) * indices.size());
-
-        // GPU buffers
-        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
-
-        BufferCreation vertexBufferCreation {};
-        vertexBufferCreation.SetName(sceneName + " - Vertex Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-            .SetIsMappable(false)
-            .SetSize(sizeof(Model::Vertex) * vertices.size());
-        model->vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, _vulkanContext);
-
-        BufferCreation indexBufferCreation {};
-        indexBufferCreation.SetName(sceneName + " - Index Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
-            .SetIsMappable(false)
-            .SetSize(sizeof(uint32_t) * indices.size());
-        model->indexBuffer = std::make_unique<Buffer>(indexBufferCreation, _vulkanContext);
-
-        SingleTimeCommands commands(_vulkanContext);
-        commands.Record([&](vk::CommandBuffer commandBuffer)
-            {
-                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, model->vertexBuffer->buffer, sizeof(Model::Vertex) * vertices.size());
-                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, model->indexBuffer->buffer, sizeof(uint32_t) * indices.size()); });
-        commands.SubmitAndWait();
-    }
-
-    model->nodes = ProcessNodes(aiScene);
-
-    return model;
+std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation &modelCreation)
+{
+    // Do preprocessing for hair
+    return std::make_unique<Model>(modelCreation, _vulkanContext);
 }

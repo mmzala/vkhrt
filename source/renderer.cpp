@@ -28,7 +28,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     };
     for (const auto& modelPath : scene)
     {
-        _models.push_back(_modelLoader->LoadFromFile(modelPath));
+        _models.emplace_back(_modelLoader->LoadFromFile(modelPath));
     }
     InitializeBLAS();
 
@@ -420,7 +420,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
     trianglesData.maxVertex = model->verticesCount - 1;
-    trianglesData.vertexStride = sizeof(Model::Vertex);
+    trianglesData.vertexStride = sizeof(Mesh::Vertex);
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;
     trianglesData.transformData = {}; // Identity transform

@@ -25,6 +25,13 @@ struct Node
 
 struct Mesh
 {
+    struct Vertex
+    {
+        glm::vec3 position {};
+        glm::vec3 normal {};
+        glm::vec2 texCoord {};
+    };
+
     enum class PrimitiveType : uint8_t
     {
         eTriangles,
@@ -40,14 +47,21 @@ struct Mesh
     [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
 
+struct ModelCreation
+{
+    std::vector<Mesh::Vertex> vertexBuffer {};
+    std::vector<uint32_t> indexBuffer {};
+
+    std::string sceneName {};
+    std::vector<Node> nodes {};
+    std::vector<Mesh> meshes {};
+    std::vector<ResourceHandle<Image>> textures {};
+    std::vector<ResourceHandle<Material>> materials {};
+};
+
 struct Model
 {
-    struct Vertex
-    {
-        glm::vec3 position {};
-        glm::vec3 normal {};
-        glm::vec2 texCoord {};
-    };
+    Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext);
 
     std::unique_ptr<Buffer> vertexBuffer;
     std::unique_ptr<Buffer> indexBuffer;
@@ -71,7 +85,8 @@ public:
     [[nodiscard]] std::shared_ptr<Model> LoadFromFile(std::string_view path);
 
 private:
-    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const aiScene* scene, const std::string_view directory);
+    [[nodiscard]] ModelCreation LoadModel(const aiScene* scene, const std::string_view directory);
+    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const ModelCreation& modelCreation);
 
     Assimp::Importer _importer {};
     std::unordered_map<std::string_view, ResourceHandle<Image>> _imageCache {};
