@@ -354,8 +354,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
         commands.Record([&](vk::CommandBuffer commandBuffer)
             {
                 VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, vertexBuffer->buffer, sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
-                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, sizeof(uint32_t) * creation.indexBuffer.size());
-            });
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, sizeof(uint32_t) * creation.indexBuffer.size()); });
         commands.SubmitAndWait();
     }
 }
@@ -468,40 +467,40 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
         for (const LineSegment& segment : lineSegments)
         {
             static const std::vector<uint32_t> indices {
-                //Top
+                // Top
                 2, 6, 7,
                 2, 3, 7,
 
-                //Bottom
+                // Bottom
                 0, 4, 5,
                 0, 1, 5,
 
-                //Left
+                // Left
                 0, 2, 6,
                 0, 4, 6,
 
-                //Right
+                // Right
                 1, 3, 7,
                 1, 5, 7,
 
-                //Front
+                // Front
                 0, 2, 3,
                 0, 1, 3,
 
-                //Back
+                // Back
                 4, 6, 7,
                 4, 5, 7
             };
 
             static const std::vector<glm::vec3> vertices {
-                glm::vec3(-1, -1,  1.0), //0
-                 glm::vec3(1, -1,  1.0), //1
-                glm::vec3(-1,  1,  1.0), //2
-                 glm::vec3(1,  1,  1.0), //3
-                glm::vec3(-1, -1, -1.0), //4
-                 glm::vec3(1, -1, -1.0), //5
-                glm::vec3(-1,  1, -1.0), //6
-                 glm::vec3(1,  1, -1.0)  //7
+                glm::vec3(-1, -1, 1.0), // 0
+                glm::vec3(1, -1, 1.0), // 1
+                glm::vec3(-1, 1, 1.0), // 2
+                glm::vec3(1, 1, 1.0), // 3
+                glm::vec3(-1, -1, -1.0), // 4
+                glm::vec3(1, -1, -1.0), // 5
+                glm::vec3(-1, 1, -1.0), // 6
+                glm::vec3(1, 1, -1.0) // 7
             };
 
             constexpr float boxSize = 0.02f;
@@ -514,7 +513,7 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
 
             for (glm::vec3 pos : vertices)
             {
-                newVertexBuffer.push_back({pos * boxSize + segment.start});
+                newVertexBuffer.push_back({ pos * boxSize + segment.start });
             }
 
             newMesh.indexCount += indices.size();
