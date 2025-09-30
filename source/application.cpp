@@ -5,6 +5,7 @@
 #define SDL_DISABLE_ANALYZE_MACROS
 
 #include "input/input.hpp"
+#include "fly_camera.hpp"
 #include "renderer.hpp"
 #include "vulkan_context.hpp"
 #include <SDL3/SDL.h>
@@ -55,9 +56,20 @@ Application::Application()
         return vk::SurfaceKHR(surface);
     };
 
+    _input = std::make_shared<Input>();
+
+    FlyCameraCreation flyCameraCreation {};
+    flyCameraCreation.position = glm::vec3(15.0f, 150.0f, 25.0f);
+    flyCameraCreation.fov = 90.0f;
+    flyCameraCreation.aspectRatio = static_cast<float>(vulkanInfo.width) / static_cast<float>(vulkanInfo.height);
+    flyCameraCreation.farPlane = 1000.0f;
+    flyCameraCreation.nearPlane = 0.1f;
+    flyCameraCreation.movementSpeed = 5.0f;
+    flyCameraCreation.mouseSensitivity = 0.2f;
+    _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
+
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
     _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext);
-    _input = std::make_shared<Input>();
 }
 
 Application::~Application()
@@ -92,5 +104,6 @@ void Application::MainLoopOnce()
         _input->UpdateEvent(event);
     }
 
+    _flyCamera->Update(0.0f); // TODO: DeltaTime
     _renderer->Render();
 }
