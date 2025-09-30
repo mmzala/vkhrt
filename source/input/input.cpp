@@ -25,7 +25,6 @@ void Input::Update()
         key.second = false;
     }
 
-
     for (auto& button : _mouse.inputPressed)
     {
         button.second = false;
