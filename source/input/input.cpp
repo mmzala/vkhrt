@@ -33,6 +33,9 @@ void Input::Update()
     {
         button.second = false;
     }
+
+    _mouse.deltaX = 0.0f;
+    _mouse.deltaY = 0.0f;
 }
 
 void Input::UpdateEvent(const SDL_Event& event)
