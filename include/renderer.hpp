@@ -1,15 +1,13 @@
 #pragma once
-#include <memory>
-#include <vulkan/vulkan.hpp>
-#include <glm/mat4x4.hpp>
 #include "vk_common.hpp"
 #include "common.hpp"
-#include "model_loader.hpp"
 #include "bottom_level_acceleration_structure.hpp"
+#include <memory>
+#include <vulkan/vulkan.hpp>
 
 struct VulkanInitInfo;
 class FlyCamera;
-struct Buffer;
+class CameraResource;
 struct Image;
 class VulkanContext;
 class SwapChain;
@@ -29,18 +27,13 @@ public:
     void Render();
 
 private:
-    struct CameraUniformData
-    {
-        glm::mat4 viewInverse {};
-        glm::mat4 projInverse {};
-    };
+    void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame);
+    void UpdateCameraResource(uint32_t currentResourceFrame);
 
-    void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex);
     void InitializeCommandBuffers();
     void InitializeSynchronizationObjects();
     void InitializeRenderTarget();
 
-    void InitializeCamera();
     void InitializeDescriptorSets();
     void InitializePipeline();
     void InitializeShaderBindingTable();
@@ -69,7 +62,7 @@ private:
     vk::DescriptorSet _descriptorSet;
 
     std::shared_ptr<FlyCamera> _flyCamera;
-    std::unique_ptr<Buffer> _uniformBuffer;
+    std::unique_ptr<CameraResource> _cameraResource;
 
     std::unique_ptr<Buffer> _raygenSBT;
     std::unique_ptr<Buffer> _missSBT;

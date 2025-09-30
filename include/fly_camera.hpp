@@ -22,8 +22,8 @@ class FlyCamera
 public:
     FlyCamera(const FlyCameraCreation& creation, const std::shared_ptr<Input>& input);
     void Update(float deltaTime);
-    [[nodiscard]] glm::mat4 GetViewMatrix() const;
-    [[nodiscard]] glm::mat4 GetProjectionMatrix() const;
+    [[nodiscard]] glm::mat4 ViewMatrix() const;
+    [[nodiscard]] glm::mat4 ProjectionMatrix() const;
 
 private:
     void UpdateKeyboard(float deltaTime);

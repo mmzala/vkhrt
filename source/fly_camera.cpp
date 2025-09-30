@@ -22,12 +22,12 @@ void FlyCamera::Update(float deltaTime)
     UpdateCameraVectors();
 }
 
-glm::mat4 FlyCamera::GetViewMatrix() const
+glm::mat4 FlyCamera::ViewMatrix() const
 {
     return glm::lookAt(_position, _position + _front, _up);
 }
 
-glm::mat4 FlyCamera::GetProjectionMatrix() const
+glm::mat4 FlyCamera::ProjectionMatrix() const
 {
     glm::mat4 projection = glm::perspectiveRH_ZO(glm::radians(_fov), _aspectRatio, _nearPlane, _farPlane);
     projection[1][1] *= -1; // Inverting Y for Vulkan (not needed with perspectiveVK)
@@ -56,7 +56,7 @@ void FlyCamera::UpdateMouse()
     deltaY *= _mouseSensitivity;
 
     _yaw += deltaX;
-    _pitch += deltaY;
+    _pitch -= deltaY;
 
     // Make sure that when pitch is out of bounds, screen doesn't get flipped
     if (_pitch > 89.0f)
