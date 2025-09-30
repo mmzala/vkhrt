@@ -3,14 +3,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 FlyCamera::FlyCamera(const FlyCameraCreation& creation, const std::shared_ptr<Input>& input)
-    : _input(input),
-    _position(creation.position),
-    _movementSpeed(creation.movementSpeed),
-    _mouseSensitivity(creation.mouseSensitivity),
-    _fov(creation.fov),
-    _aspectRatio(creation.aspectRatio),
-    _nearPlane(creation.nearPlane),
-    _farPlane(creation.farPlane)
+    : _input(input)
+    , _position(creation.position)
+    , _movementSpeed(creation.movementSpeed)
+    , _mouseSensitivity(creation.mouseSensitivity)
+    , _fov(creation.fov)
+    , _aspectRatio(creation.aspectRatio)
+    , _nearPlane(creation.nearPlane)
+    , _farPlane(creation.farPlane)
 {
     UpdateCameraVectors();
 }

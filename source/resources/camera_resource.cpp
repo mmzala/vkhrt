@@ -16,7 +16,7 @@ CameraResource::~CameraResource()
 
 void CameraResource::Update(uint32_t frameIndex, const glm::mat4& viewInverse, const glm::mat4& projInverse)
 {
-    CameraUniformData data{};
+    CameraUniformData data {};
     data.projInverse = projInverse;
     data.viewInverse = viewInverse;
     memcpy(_buffers[frameIndex]->mappedPtr, &data, sizeof(CameraUniformData));
