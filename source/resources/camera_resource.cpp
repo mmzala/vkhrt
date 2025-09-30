@@ -29,11 +29,11 @@ void CameraResource::CreateBuffers()
 
     for (auto& buffer : _buffers)
     {
-        std::string name = "Camera Uniform Buffer " + bufferIndex;
+        std::string name = "Camera Uniform Buffer " + std::to_string(bufferIndex);
         bufferIndex++;
 
         BufferCreation uniformBufferCreation {};
-        uniformBufferCreation.SetName("Camera Uniform Buffer")
+        uniformBufferCreation.SetName(name)
             .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
             .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO)
             .SetIsMappable(true)
