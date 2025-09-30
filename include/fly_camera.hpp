@@ -30,7 +30,7 @@ private:
     void UpdateMouse();
     void UpdateCameraVectors();
 
-    const std::shared_ptr<Input> _input {};
+    std::shared_ptr<Input> _input {};
 
     glm::vec3 _position {};
     glm::vec3 _front = glm::vec3(0.0f, 0.0f, -1.0f);

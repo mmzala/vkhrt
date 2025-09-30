@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "fly_camera.hpp"
 #include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "shader.hpp"
@@ -10,8 +11,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
-Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext)
+Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<FlyCamera>& flyCamera)
     : _vulkanContext(vulkanContext)
+    , _flyCamera(flyCamera)
     , _windowWidth(initInfo.width)
     , _windowHeight(initInfo.height)
 {
@@ -168,15 +170,9 @@ void Renderer::InitializeRenderTarget()
 
 void Renderer::InitializeCamera()
 {
-    constexpr float fov = glm::radians(60.0f);
-    const float aspectRatio = _windowWidth / static_cast<float>(_windowHeight);
-
-    glm::mat4 projection = glm::perspectiveRH_ZO(fov, aspectRatio, 0.1f, 1000.0f);
-    projection[1][1] *= -1; // Inverting Y for Vulkan (not needed with perspectiveVK)
-
     CameraUniformData cameraData {};
-    cameraData.projInverse = glm::inverse(projection);
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(15.0f, 150.0f, 25.0f), glm::vec3(-6.0f, 151.0f, -1.2f), glm::vec3(0.0f, 1.0f, 0.0f)));
+    cameraData.projInverse = glm::inverse(_flyCamera->GetProjectionMatrix());
+    cameraData.viewInverse = glm::inverse(_flyCamera->GetViewMatrix());
 
     constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
     BufferCreation uniformBufferCreation {};

@@ -8,6 +8,7 @@
 #include "bottom_level_acceleration_structure.hpp"
 
 struct VulkanInitInfo;
+class FlyCamera;
 struct Buffer;
 struct Image;
 class VulkanContext;
@@ -20,7 +21,7 @@ class BindlessResources;
 class Renderer
 {
 public:
-    Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext);
+    Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<FlyCamera>& flyCamera);
     ~Renderer();
     NON_COPYABLE(Renderer);
     NON_MOVABLE(Renderer);
@@ -67,6 +68,7 @@ private:
     vk::DescriptorSetLayout _descriptorSetLayout;
     vk::DescriptorSet _descriptorSet;
 
+    std::shared_ptr<FlyCamera> _flyCamera;
     std::unique_ptr<Buffer> _uniformBuffer;
 
     std::unique_ptr<Buffer> _raygenSBT;
