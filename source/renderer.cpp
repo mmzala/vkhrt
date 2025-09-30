@@ -1,8 +1,9 @@
 #include "renderer.hpp"
+#include "fly_camera.hpp"
 #include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
+#include "resources/camera_resource.hpp"
 #include "shader.hpp"
-#include "single_time_commands.hpp"
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
 #include "vulkan_context.hpp"
@@ -10,8 +11,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 
-Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext)
+Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<FlyCamera>& flyCamera)
     : _vulkanContext(vulkanContext)
+    , _flyCamera(flyCamera)
     , _windowWidth(initInfo.width)
     , _windowHeight(initInfo.height)
 {
@@ -22,6 +24,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
 
     _bindlessResources = std::make_shared<BindlessResources>(_vulkanContext);
     _modelLoader = std::make_unique<ModelLoader>(_bindlessResources, _vulkanContext);
+    _cameraResource = std::make_unique<CameraResource>(_vulkanContext);
 
     const std::vector<std::string> scene = {
         "assets/claire/Claire_HairMain_HQ.gltf",
@@ -35,7 +38,6 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
     _bindlessResources->UpdateDescriptorSet();
 
-    InitializeCamera();
     InitializeDescriptorSets();
     InitializePipeline();
     InitializeShaderBindingTable();
@@ -60,6 +62,7 @@ Renderer::~Renderer()
 void Renderer::Render()
 {
     uint32_t currentResourcesFrame = _renderedFrames % MAX_FRAMES_IN_FLIGHT;
+    UpdateCameraResource(currentResourcesFrame);
 
     VkCheckResult(_vulkanContext->Device().waitForFences(1, &_inFlightFences.at(currentResourcesFrame), vk::True,
                       std::numeric_limits<uint64_t>::max()),
@@ -77,7 +80,7 @@ void Renderer::Render()
 
     vk::CommandBufferBeginInfo commandBufferBeginInfo {};
     VkCheckResult(commandBuffer.begin(&commandBufferBeginInfo), "Failed to begin recording command buffer!");
-    RecordCommands(commandBuffer, swapChainImageIndex);
+    RecordCommands(commandBuffer, swapChainImageIndex, currentResourcesFrame);
     commandBuffer.end();
 
     vk::Semaphore waitSemaphore = _imageAvailableSemaphores.at(currentResourcesFrame);
@@ -106,7 +109,7 @@ void Renderer::Render()
     _renderedFrames++;
 }
 
-void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex)
+void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame)
 {
     VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
@@ -114,6 +117,7 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
+    commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 2, _cameraResource->DescriptorSet(currentResourceFrame), nullptr);
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
@@ -128,6 +132,14 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
 
     VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
         vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR);
+}
+
+void Renderer::UpdateCameraResource(uint32_t currentResourceFrame)
+{
+    glm::mat4 inverseView = glm::inverse(_flyCamera->ViewMatrix());
+    glm::mat4 inverseProjection = glm::inverse(_flyCamera->ProjectionMatrix());
+
+    _cameraResource->Update(currentResourceFrame, inverseView, inverseProjection);
 }
 
 void Renderer::InitializeCommandBuffers()
@@ -166,32 +178,9 @@ void Renderer::InitializeRenderTarget()
     _renderTarget = std::make_unique<Image>(imageCreation, _vulkanContext);
 }
 
-void Renderer::InitializeCamera()
-{
-    constexpr float fov = glm::radians(60.0f);
-    const float aspectRatio = _windowWidth / static_cast<float>(_windowHeight);
-
-    glm::mat4 projection = glm::perspectiveRH_ZO(fov, aspectRatio, 0.1f, 1000.0f);
-    projection[1][1] *= -1; // Inverting Y for Vulkan (not needed with perspectiveVK)
-
-    CameraUniformData cameraData {};
-    cameraData.projInverse = glm::inverse(projection);
-    cameraData.viewInverse = glm::inverse(glm::lookAt(glm::vec3(15.0f, 150.0f, 25.0f), glm::vec3(-6.0f, 151.0f, -1.2f), glm::vec3(0.0f, 1.0f, 0.0f)));
-
-    constexpr vk::DeviceSize uniformBufferSize = sizeof(CameraUniformData);
-    BufferCreation uniformBufferCreation {};
-    uniformBufferCreation.SetName("Camera Uniform Buffer")
-        .SetUsageFlags(vk::BufferUsageFlagBits::eUniformBuffer)
-        .SetMemoryUsage(VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE)
-        .SetIsMappable(true)
-        .SetSize(uniformBufferSize);
-    _uniformBuffer = std::make_unique<Buffer>(uniformBufferCreation, _vulkanContext);
-    memcpy(_uniformBuffer->mappedPtr, &cameraData, uniformBufferSize);
-}
-
 void Renderer::InitializeDescriptorSets()
 {
-    std::array<vk::DescriptorSetLayoutBinding, 3> bindingLayouts {};
+    std::array<vk::DescriptorSetLayoutBinding, 2> bindingLayouts {};
 
     vk::DescriptorSetLayoutBinding& imageLayout = bindingLayouts.at(0);
     imageLayout.binding = 0;
@@ -205,18 +194,12 @@ void Renderer::InitializeDescriptorSets()
     accelerationStructureLayout.descriptorCount = 1;
     accelerationStructureLayout.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
 
-    vk::DescriptorSetLayoutBinding& cameraLayout = bindingLayouts.at(2);
-    cameraLayout.binding = 2;
-    cameraLayout.descriptorType = vk::DescriptorType::eUniformBuffer;
-    cameraLayout.descriptorCount = 1;
-    cameraLayout.stageFlags = vk::ShaderStageFlagBits::eRaygenKHR;
-
     vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo {};
     descriptorSetLayoutCreateInfo.bindingCount = bindingLayouts.size();
     descriptorSetLayoutCreateInfo.pBindings = bindingLayouts.data();
     _descriptorSetLayout = _vulkanContext->Device().createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
 
-    std::array<vk::DescriptorPoolSize, 3> poolSizes {};
+    std::array<vk::DescriptorPoolSize, 2> poolSizes {};
 
     vk::DescriptorPoolSize& imagePoolSize = poolSizes.at(0);
     imagePoolSize.type = vk::DescriptorType::eStorageImage;
@@ -225,10 +208,6 @@ void Renderer::InitializeDescriptorSets()
     vk::DescriptorPoolSize& accelerationStructureSize = poolSizes.at(1);
     accelerationStructureSize.type = vk::DescriptorType::eAccelerationStructureKHR;
     accelerationStructureSize.descriptorCount = 1;
-
-    vk::DescriptorPoolSize& cameraSize = poolSizes.at(2);
-    cameraSize.type = vk::DescriptorType::eUniformBuffer;
-    cameraSize.descriptorCount = 1;
 
     vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo {};
     descriptorPoolCreateInfo.maxSets = 1;
@@ -251,12 +230,7 @@ void Renderer::InitializeDescriptorSets()
     const vk::AccelerationStructureKHR tlas = _tlas->Structure();
     descriptorAccelerationStructureInfo.pAccelerationStructures = &tlas;
 
-    vk::DescriptorBufferInfo descriptorBufferInfo {};
-    descriptorBufferInfo.buffer = _uniformBuffer->buffer;
-    descriptorBufferInfo.offset = 0;
-    descriptorBufferInfo.range = sizeof(CameraUniformData);
-
-    std::array<vk::WriteDescriptorSet, 3> descriptorWrites {};
+    std::array<vk::WriteDescriptorSet, 2> descriptorWrites {};
 
     vk::WriteDescriptorSet& imageWrite = descriptorWrites.at(0);
     imageWrite.dstSet = _descriptorSet;
@@ -273,14 +247,6 @@ void Renderer::InitializeDescriptorSets()
     accelerationStructureWrite.dstArrayElement = 0;
     accelerationStructureWrite.descriptorCount = 1;
     accelerationStructureWrite.descriptorType = vk::DescriptorType::eAccelerationStructureKHR;
-
-    vk::WriteDescriptorSet& uniformBufferWrite = descriptorWrites.at(2);
-    uniformBufferWrite.dstSet = _descriptorSet;
-    uniformBufferWrite.dstBinding = 2;
-    uniformBufferWrite.dstArrayElement = 0;
-    uniformBufferWrite.descriptorCount = 1;
-    uniformBufferWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
-    uniformBufferWrite.pBufferInfo = &descriptorBufferInfo;
 
     _vulkanContext->Device().updateDescriptorSets(static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
@@ -331,7 +297,7 @@ void Renderer::InitializePipeline()
     group3.anyHitShader = vk::ShaderUnusedKHR;
     group3.intersectionShader = vk::ShaderUnusedKHR;
 
-    std::array<vk::DescriptorSetLayout, 2> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout };
+    std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout, _cameraResource->DescriptorSetLayout() };
 
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
     pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();

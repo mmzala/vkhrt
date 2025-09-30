@@ -4,8 +4,10 @@
 // This definition fixes the issues and does not change the final build output
 #define SDL_DISABLE_ANALYZE_MACROS
 
+#include "fly_camera.hpp"
 #include "input/input.hpp"
 #include "renderer.hpp"
+#include "timer.hpp"
 #include "vulkan_context.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
@@ -55,9 +57,25 @@ Application::Application()
         return vk::SurfaceKHR(surface);
     };
 
-    _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
-    _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext);
+    _timer = std::make_unique<Timer>();
     _input = std::make_shared<Input>();
+
+    FlyCameraCreation flyCameraCreation {};
+    flyCameraCreation.position = glm::vec3(0.0f, 150.0f, 25.0f);
+    flyCameraCreation.fov = 60.0f;
+    flyCameraCreation.aspectRatio = static_cast<float>(vulkanInfo.width) / static_cast<float>(vulkanInfo.height);
+    flyCameraCreation.farPlane = 1000.0f;
+    flyCameraCreation.nearPlane = 0.1f;
+    flyCameraCreation.movementSpeed = 0.25f;
+    flyCameraCreation.mouseSensitivity = 0.2f;
+    _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
+
+    _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
+    _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+
+    // Hide mouse to be able to rotate infinitely
+    SDL_SetWindowRelativeMouseMode(_window, true);
+    SDL_HideCursor();
 }
 
 Application::~Application()
@@ -78,6 +96,10 @@ int Application::Run()
 
 void Application::MainLoopOnce()
 {
+    DeltaMS deltaMS = _timer->GetElapsed();
+    _timer->Reset();
+    const float deltaTime = deltaMS.count();
+
     _input->Update();
 
     SDL_Event event;
@@ -92,5 +114,6 @@ void Application::MainLoopOnce()
         _input->UpdateEvent(event);
     }
 
+    _flyCamera->Update(deltaTime);
     _renderer->Render();
 }

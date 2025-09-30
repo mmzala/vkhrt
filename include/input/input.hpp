@@ -23,6 +23,7 @@ public:
 
     void SetMousePositionToAbsoluteMousePosition();
     void GetMousePosition(int32_t& x, int32_t& y) const;
+    void GetMouseDelta(float& x, float& y) const;
 
 private:
     template <typename T>
@@ -36,6 +37,7 @@ private:
     struct Mouse : InputDevice<MouseButton>
     {
         float positionX {}, positionY {};
+        float deltaX {}, deltaY {};
     } _mouse {};
 
     InputDevice<KeyboardCode> _keyboard {};

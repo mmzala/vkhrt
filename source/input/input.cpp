@@ -33,6 +33,9 @@ void Input::Update()
     {
         button.second = false;
     }
+
+    _mouse.deltaX = 0.0f;
+    _mouse.deltaY = 0.0f;
 }
 
 void Input::UpdateEvent(const SDL_Event& event)
@@ -74,6 +77,9 @@ void Input::UpdateEvent(const SDL_Event& event)
     {
         _mouse.positionX += event.motion.xrel;
         _mouse.positionY += event.motion.yrel;
+
+        _mouse.deltaX = event.motion.xrel;
+        _mouse.deltaY = event.motion.yrel;
         break;
     }
     default:
@@ -112,6 +118,7 @@ bool Input::IsMouseButtonReleased(MouseButton button) const
 {
     return UnorderedMapGetOr(_mouse.inputReleased, button, false);
 }
+
 void Input::SetMousePositionToAbsoluteMousePosition()
 {
     SDL_GetMouseState(&_mouse.positionX, &_mouse.positionY);
@@ -121,4 +128,10 @@ void Input::GetMousePosition(int32_t& x, int32_t& y) const
 {
     x = static_cast<int32_t>(_mouse.positionX);
     y = static_cast<int32_t>(_mouse.positionY);
+}
+
+void Input::GetMouseDelta(float& x, float& y) const
+{
+    x = _mouse.deltaX;
+    y = _mouse.deltaY;
 }
