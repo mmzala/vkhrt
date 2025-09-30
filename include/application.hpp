@@ -4,6 +4,7 @@
 
 class VulkanContext;
 class Renderer;
+class Input;
 class SDL_Window;
 
 class Application
@@ -21,6 +22,7 @@ private:
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<Renderer> _renderer;
+    std::shared_ptr<Input> _input;
     SDL_Window* _window = nullptr;
     bool _exitRequested = false;
 };

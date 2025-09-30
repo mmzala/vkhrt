@@ -430,7 +430,6 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
     std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
-    // We at least need the size of lines
     std::vector<Mesh::Vertex> newVertexBuffer {};
     std::vector<uint32_t> newIndexBuffer {};
 
@@ -447,13 +446,13 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
         std::vector<LineSegment> lineSegments(oldMesh.indexCount / 2);
         uint32_t indexOffset = 0;
 
-        for (int i = 0; i < lineSegments.size(); ++i)
+        for (LineSegment& segment : lineSegments)
         {
             uint32_t startIndex = modelCreation.indexBuffer[oldMesh.firstIndex + indexOffset];
             uint32_t endIndex = modelCreation.indexBuffer[oldMesh.firstIndex + indexOffset + 1];
 
-            lineSegments[i].start = modelCreation.vertexBuffer[oldMesh.firstVertex + startIndex].position;
-            lineSegments[i].end = modelCreation.vertexBuffer[oldMesh.firstVertex + endIndex].position;
+            segment.start = modelCreation.vertexBuffer[oldMesh.firstVertex + startIndex].position;
+            segment.end = modelCreation.vertexBuffer[oldMesh.firstVertex + endIndex].position;
             indexOffset += 2;
         }
 
