@@ -4,8 +4,9 @@
 // This definition fixes the issues and does not change the final build output
 #define SDL_DISABLE_ANALYZE_MACROS
 
-#include "renderer.hpp"
 #include "vulkan_context.hpp"
+#include "renderer.hpp"
+#include "input/input.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -56,6 +57,7 @@ Application::Application()
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
     _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext);
+    _input = std::make_shared<Input>();
 }
 
 Application::~Application()
@@ -76,6 +78,8 @@ int Application::Run()
 
 void Application::MainLoopOnce()
 {
+    _input->Update();
+
     SDL_Event event;
     while (SDL_PollEvent(&event))
     {
@@ -84,6 +88,8 @@ void Application::MainLoopOnce()
             _exitRequested = true;
             break;
         }
+
+        _input->UpdateEvent(event);
     }
 
     _renderer->Render();
