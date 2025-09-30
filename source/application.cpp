@@ -72,6 +72,10 @@ Application::Application()
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
     _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+
+    // Hide mouse to be able to rotate infinitely
+    SDL_SetWindowRelativeMouseMode(_window, true);
+    SDL_HideCursor();
 }
 
 Application::~Application()
