@@ -6,6 +6,7 @@ class VulkanContext;
 class Renderer;
 class Input;
 class FlyCamera;
+class Timer;
 class SDL_Window;
 
 class Application
@@ -21,10 +22,12 @@ public:
 private:
     void MainLoopOnce();
 
-    std::shared_ptr<VulkanContext> _vulkanContext;
-    std::unique_ptr<Renderer> _renderer;
+    std::unique_ptr<Timer> _timer;
     std::shared_ptr<Input> _input;
     std::shared_ptr<FlyCamera> _flyCamera;
+    std::shared_ptr<VulkanContext> _vulkanContext;
+    std::unique_ptr<Renderer> _renderer;
+
     SDL_Window* _window = nullptr;
     bool _exitRequested = false;
 };

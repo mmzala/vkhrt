@@ -15,7 +15,7 @@ FlyCamera::FlyCamera(const FlyCameraCreation& creation, const std::shared_ptr<In
     UpdateCameraVectors();
 }
 
-void FlyCamera::Update(float deltaTime)
+void FlyCamera::Update(const float deltaTime)
 {
     UpdateKeyboard(deltaTime);
     UpdateMouse();
@@ -34,7 +34,7 @@ glm::mat4 FlyCamera::ProjectionMatrix() const
     return projection;
 }
 
-void FlyCamera::UpdateKeyboard(float deltaTime)
+void FlyCamera::UpdateKeyboard(const float deltaTime)
 {
     float velocity = _movementSpeed * deltaTime;
     float forward = static_cast<float>(_input->IsKeyHeld(KeyboardCode::eW)) - static_cast<float>(_input->IsKeyHeld(KeyboardCode::eS));

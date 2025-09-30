@@ -21,12 +21,12 @@ class FlyCamera
 {
 public:
     FlyCamera(const FlyCameraCreation& creation, const std::shared_ptr<Input>& input);
-    void Update(float deltaTime);
+    void Update(const float deltaTime);
     [[nodiscard]] glm::mat4 ViewMatrix() const;
     [[nodiscard]] glm::mat4 ProjectionMatrix() const;
 
 private:
-    void UpdateKeyboard(float deltaTime);
+    void UpdateKeyboard(const float deltaTime);
     void UpdateMouse();
     void UpdateCameraVectors();
 

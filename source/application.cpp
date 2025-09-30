@@ -8,6 +8,7 @@
 #include "fly_camera.hpp"
 #include "renderer.hpp"
 #include "vulkan_context.hpp"
+#include "timer.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -56,6 +57,7 @@ Application::Application()
         return vk::SurfaceKHR(surface);
     };
 
+    _timer = std::make_unique<Timer>();
     _input = std::make_shared<Input>();
 
     FlyCameraCreation flyCameraCreation {};
@@ -64,7 +66,7 @@ Application::Application()
     flyCameraCreation.aspectRatio = static_cast<float>(vulkanInfo.width) / static_cast<float>(vulkanInfo.height);
     flyCameraCreation.farPlane = 1000.0f;
     flyCameraCreation.nearPlane = 0.1f;
-    flyCameraCreation.movementSpeed = 5.0f;
+    flyCameraCreation.movementSpeed = 0.25f;
     flyCameraCreation.mouseSensitivity = 0.2f;
     _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
 
@@ -90,6 +92,10 @@ int Application::Run()
 
 void Application::MainLoopOnce()
 {
+    DeltaMS deltaMS = _timer->GetElapsed();
+    _timer->Reset();
+    const float deltaTime = deltaMS.count();
+
     _input->Update();
 
     SDL_Event event;
@@ -104,6 +110,6 @@ void Application::MainLoopOnce()
         _input->UpdateEvent(event);
     }
 
-    _flyCamera->Update(0.0f); // TODO: DeltaTime
+    _flyCamera->Update(deltaTime);
     _renderer->Render();
 }
