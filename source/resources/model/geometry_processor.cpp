@@ -90,6 +90,35 @@ Mesh GenerateMeshGeometryCubesFromLines(const std::vector<Line>& lines, std::vec
     return mesh;
 }
 
+std::vector<Curve> GenerateCurvesFromLines(const std::vector<Line>& lines, float tension)
+{
+    std::vector<Curve> curves(lines.size());
+
+    // Duplicate end-lines so Catmull–Rom works at the ends
+    std::vector<Line> linesToProcess {};
+    linesToProcess.reserve(lines.size() + 2);
+    linesToProcess.push_back(lines.front()); // duplicate first
+    linesToProcess.insert(linesToProcess.end(), lines.begin(), lines.end());
+    linesToProcess.push_back(lines.back()); // duplicate last
+
+    for (uint32_t i = 1; i < linesToProcess.size() - 1; ++i)
+    {
+        Curve& curve = curves[i];
+
+        glm::vec3 p0 = linesToProcess[i - 1].start;
+        glm::vec3 p1 = linesToProcess[i].start;
+        glm::vec3 p2 = linesToProcess[i].end;
+        glm::vec3 p3 = linesToProcess[i + 1].end;
+
+        curve.start = p1;
+        curve.controlPoint1 = p1 + (p2 - p0) * (tension / 6.0f);
+        curve.controlPoint2 = p2 - (p3 - p1) * (tension / 6.0f);
+        curve.end = p2;
+    }
+
+    return curves;
+}
+
 ModelCreation GenerateHairMeshesFromHairModel(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh){ return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
