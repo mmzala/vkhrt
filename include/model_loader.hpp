@@ -23,6 +23,20 @@ struct Node
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
 
+struct Line
+{
+    glm::vec3 start {};
+    glm::vec3 end {};
+};
+
+struct Curve
+{
+    glm::vec3 start {};
+    glm::vec3 controlPoint1 {};
+    glm::vec3 controlPoint2 {};
+    glm::vec3 end {};
+};
+
 struct Mesh
 {
     struct Vertex
