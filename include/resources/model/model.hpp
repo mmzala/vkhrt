@@ -1,17 +1,7 @@
 #pragma once
-#include "common.hpp"
-#include "resources/resource_manager.hpp"
-#include <assimp/Importer.hpp>
+#include "resources/gpu_resources.hpp"
 #include <glm/vec3.hpp>
 #include <glm/matrix.hpp>
-#include <unordered_map>
-
-class VulkanContext;
-class BindlessResources;
-struct aiScene;
-struct Buffer;
-struct Image;
-struct Material;
 
 struct Node
 {
@@ -67,7 +57,7 @@ struct SceneGraph
     NON_COPYABLE(SceneGraph) // If we copied, node parent pointers would be invalidated
 
     std::string sceneName {};
-    std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer?)
+    std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer or just rely on a root node only?)
     std::vector<Mesh> meshes {};
     std::vector<ResourceHandle<Image>> textures {};
     std::vector<ResourceHandle<Material>> materials {};
@@ -89,24 +79,4 @@ struct Model
     uint32_t verticesCount {};
     uint32_t indexCount {};
     std::shared_ptr<SceneGraph> sceneGraph {};
-};
-
-class ModelLoader
-{
-public:
-    ModelLoader(const std::shared_ptr<BindlessResources>& bindlessResources, const std::shared_ptr<VulkanContext>& vulkanContext);
-    ~ModelLoader() = default;
-    NON_COPYABLE(ModelLoader);
-    NON_MOVABLE(ModelLoader);
-
-    [[nodiscard]] std::shared_ptr<Model> LoadFromFile(std::string_view path);
-
-private:
-    [[nodiscard]] ModelCreation LoadModel(const aiScene* scene, const std::string_view directory);
-    [[nodiscard]] std::shared_ptr<Model> ProcessModel(const ModelCreation& modelCreation);
-
-    Assimp::Importer _importer {};
-    std::unordered_map<std::string_view, ResourceHandle<Image>> _imageCache {};
-    std::shared_ptr<VulkanContext> _vulkanContext;
-    std::shared_ptr<BindlessResources> _bindlessResources;
 };

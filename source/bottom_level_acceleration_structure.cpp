@@ -1,10 +1,8 @@
 #include "bottom_level_acceleration_structure.hpp"
-#include "model_loader.hpp"
+#include "resources/model/model.hpp"
 #include "resources/bindless_resources.hpp"
 #include "single_time_commands.hpp"
-#include "vk_common.hpp"
 #include "vulkan_context.hpp"
-#include <glm/glm.hpp>
 
 BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const BLASInput& input, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext)
     : _transform(input.transform)

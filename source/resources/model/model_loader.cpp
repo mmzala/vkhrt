@@ -1,4 +1,4 @@
-#include "model_loader.hpp"
+#include "resources/model/model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/gpu_resources.hpp"
 #include "single_time_commands.hpp"

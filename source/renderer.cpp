@@ -1,6 +1,6 @@
 #include "renderer.hpp"
 #include "fly_camera.hpp"
-#include "model_loader.hpp"
+#include "resources/model/model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/camera_resource.hpp"
 #include "shader.hpp"
