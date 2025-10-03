@@ -1,8 +1,8 @@
 #include "renderer.hpp"
 #include "fly_camera.hpp"
-#include "model_loader.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/camera_resource.hpp"
+#include "resources/model/model_loader.hpp"
 #include "shader.hpp"
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
@@ -27,7 +27,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _cameraResource = std::make_unique<CameraResource>(_vulkanContext);
 
     const std::vector<std::string> scene = {
-        "assets/claire/Claire_HairMain_HQ.gltf",
+        "assets/claire/Claire_HairMain_less_strands.gltf",
     };
     for (const auto& modelPath : scene)
     {

@@ -61,12 +61,12 @@ Application::Application()
     _input = std::make_shared<Input>();
 
     FlyCameraCreation flyCameraCreation {};
-    flyCameraCreation.position = glm::vec3(0.0f, 150.0f, 25.0f);
+    flyCameraCreation.position = glm::vec3(0.0f, 150.0f, 20.0f);
     flyCameraCreation.fov = 60.0f;
     flyCameraCreation.aspectRatio = static_cast<float>(vulkanInfo.width) / static_cast<float>(vulkanInfo.height);
     flyCameraCreation.farPlane = 1000.0f;
     flyCameraCreation.nearPlane = 0.1f;
-    flyCameraCreation.movementSpeed = 0.25f;
+    flyCameraCreation.movementSpeed = 0.2f;
     flyCameraCreation.mouseSensitivity = 0.2f;
     _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
 
