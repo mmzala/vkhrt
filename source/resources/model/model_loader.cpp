@@ -297,18 +297,13 @@ glm::vec3 Curve::Sample(float t) const
     float uuu = uu * u;
     float ttt = tt * t;
 
-    return uuu * start +
-           3.0f * uu * t * controlPoint1 +
-           3.0f * u * tt * controlPoint2 +
-           ttt * end;
+    return uuu * start + 3.0f * uu * t * controlPoint1 + 3.0f * u * tt * controlPoint2 + ttt * end;
 }
 
 glm::vec3 Curve::SampleDerivitive(float t) const
 {
     float u = 1.0f - t;
-    return 3.0f * u * u * (controlPoint1 - start) +
-           6.0f * u * t * (controlPoint2 - controlPoint1) +
-           3.0f * t * t * (end - controlPoint2);
+    return 3.0f * u * u * (controlPoint1 - start) + 6.0f * u * t * (controlPoint2 - controlPoint1) + 3.0f * t * t * (end - controlPoint2);
 }
 
 uint32_t Mesh::GetIndicesPerFaceNum() const

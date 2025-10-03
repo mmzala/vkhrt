@@ -1,6 +1,6 @@
 #include "bottom_level_acceleration_structure.hpp"
-#include "resources/model/model.hpp"
 #include "resources/bindless_resources.hpp"
+#include "resources/model/model.hpp"
 #include "single_time_commands.hpp"
 #include "vulkan_context.hpp"
 
