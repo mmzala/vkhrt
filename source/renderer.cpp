@@ -27,7 +27,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _cameraResource = std::make_unique<CameraResource>(_vulkanContext);
 
     const std::vector<std::string> scene = {
-        "assets/claire/Claire_HairMain_HQ.gltf",
+        "assets/claire/Claire_HairMain_less_strands.gltf",
     };
     for (const auto& modelPath : scene)
     {

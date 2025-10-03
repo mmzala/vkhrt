@@ -25,6 +25,9 @@ struct Curve
     glm::vec3 controlPoint1 {};
     glm::vec3 controlPoint2 {};
     glm::vec3 end {};
+
+    [[nodiscard]] glm::vec3 Sample(float t) const;
+    [[nodiscard]] glm::vec3 SampleDerivitive(float t) const;
 };
 
 struct Mesh
