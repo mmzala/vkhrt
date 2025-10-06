@@ -63,7 +63,38 @@ std::vector<Line> GenerateLines(const Mesh& mesh, const std::vector<Mesh::Vertex
     return lineSegments;
 }
 
-Mesh GenerateMeshGeometryCubes(const std::vector<Line>& lines, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize)
+std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension = 1.0f)
+{
+    std::vector<Curve> curves(lines.size());
+
+    // TODO: Handle line array that has multiple hair strands
+
+    // Duplicate end-lines so Catmull–Rom works at the ends
+    std::vector<Line> linesToProcess {};
+    linesToProcess.reserve(lines.size() + 2);
+    linesToProcess.push_back(lines.front()); // duplicate first
+    linesToProcess.insert(linesToProcess.end(), lines.begin(), lines.end());
+    linesToProcess.push_back(lines.back()); // duplicate last
+
+    for (uint32_t i = 1; i < linesToProcess.size() - 1; ++i)
+    {
+        Curve& curve = curves[i];
+
+        glm::vec3 p0 = linesToProcess[i - 1].start;
+        glm::vec3 p1 = linesToProcess[i].start;
+        glm::vec3 p2 = linesToProcess[i].end;
+        glm::vec3 p3 = linesToProcess[i + 1].end;
+
+        curve.start = p1;
+        curve.controlPoint1 = p1 + (p2 - p0) * (tension / 6.0f);
+        curve.controlPoint2 = p2 - (p3 - p1) * (tension / 6.0f);
+        curve.end = p2;
+    }
+
+    return curves;
+}
+
+Mesh GenerateMeshGeometryCubes(const std::vector<Line>& lines, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize = 0.02f)
 {
     Mesh mesh {};
     mesh.firstIndex = indexBuffer.size();
@@ -89,7 +120,7 @@ Mesh GenerateMeshGeometryCubes(const std::vector<Line>& lines, std::vector<Mesh:
     return mesh;
 }
 
-Mesh GenerateMeshGeometryCubes(const std::vector<Curve>& curves, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize, uint32_t numSamplesPerCurve)
+Mesh GenerateMeshGeometryCubes(const std::vector<Curve>& curves, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize = 0.02f, uint32_t numSamplesPerCurve = 2)
 {
     Mesh mesh {};
     mesh.firstIndex = indexBuffer.size();
@@ -120,7 +151,7 @@ Mesh GenerateMeshGeometryCubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
-Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float radius, uint32_t numCurveSamples, uint32_t numRadialSamples)
+Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float radius = 0.2f, uint32_t numCurveSamples = 2, uint32_t numRadialSamples = 4)
 {
     Mesh mesh {};
     mesh.firstIndex = indexBuffer.size();
@@ -185,41 +216,59 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
-std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension)
-{
-    std::vector<Curve> curves(lines.size());
-
-    // TODO: Handle line array that has multiple hair strands
-
-    // Duplicate end-lines so Catmull–Rom works at the ends
-    std::vector<Line> linesToProcess {};
-    linesToProcess.reserve(lines.size() + 2);
-    linesToProcess.push_back(lines.front()); // duplicate first
-    linesToProcess.insert(linesToProcess.end(), lines.begin(), lines.end());
-    linesToProcess.push_back(lines.back()); // duplicate last
-
-    for (uint32_t i = 1; i < linesToProcess.size() - 1; ++i)
-    {
-        Curve& curve = curves[i];
-
-        glm::vec3 p0 = linesToProcess[i - 1].start;
-        glm::vec3 p1 = linesToProcess[i].start;
-        glm::vec3 p2 = linesToProcess[i].end;
-        glm::vec3 p3 = linesToProcess[i + 1].end;
-
-        curve.start = p1;
-        curve.controlPoint1 = p1 + (p2 - p0) * (tension / 6.0f);
-        curve.controlPoint2 = p2 - (p3 - p1) * (tension / 6.0f);
-        curve.end = p2;
-    }
-
-    return curves;
-}
-
-ModelCreation GenerateHairMeshesFromHairModel(const ModelCreation& modelCreation)
+ModelCreation ProcessHair(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
-        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+            { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+    if (it != modelCreation.sceneGraph->meshes.end())
+    {
+        spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
+        return modelCreation;
+    }
+
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        Hair& hair = sceneGraph.hairs.emplace_back();
+        hair.material = oldMesh.material;
+        hair.firstCurve = newModelCreation.curveBuffer.size();
+        hair.firstAabb = newModelCreation.aabbBuffer.size();
+
+        // Create line segments from hair lines
+        const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
+
+        // Create curves from lines
+        const std::vector<Curve> curves = GenerateCurves(lines);
+        newModelCreation.curveBuffer.insert(newModelCreation.curveBuffer.end(), curves.begin(), curves.end());
+
+        // TODO: Create aabb's from curves
+
+        // Update hair information
+        hair.curveCount = curves.size();
+        // hair.aabbCount = 0;
+    }
+
+    // Update geometry information in the model
+    sceneGraph.meshes.clear();
+
+    for (Node& node : sceneGraph.nodes)
+    {
+        node.hairs = node.meshes; // Since we don't support models with mixed hair and mesh geometry for now, we just copy the information
+        node.meshes.clear();
+    }
+
+    return newModelCreation;
+}
+
+ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
+{
+    const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
+            { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
     if (it != modelCreation.sceneGraph->meshes.end())
     {
         spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);

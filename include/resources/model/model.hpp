@@ -9,8 +9,15 @@ struct Node
     const Node* parent = nullptr;
     glm::mat4 localMatrix {};
     std::vector<uint32_t> meshes {};
+    std::vector<uint32_t> hairs {};
 
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
+};
+
+struct AABB
+{
+    glm::vec3 min {};
+    glm::vec3 max {};
 };
 
 struct Line
@@ -54,6 +61,15 @@ struct Mesh
     [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
 
+struct Hair
+{
+    uint32_t curveCount {};
+    uint32_t firstCurve {};
+    uint32_t aabbCount {};
+    uint32_t firstAabb {};
+    ResourceHandle<Material> material {};
+};
+
 struct SceneGraph
 {
     SceneGraph() = default;
@@ -62,6 +78,7 @@ struct SceneGraph
     std::string sceneName {};
     std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer or just rely on a root node only?)
     std::vector<Mesh> meshes {};
+    std::vector<Hair> hairs {};
     std::vector<ResourceHandle<Image>> textures {};
     std::vector<ResourceHandle<Material>> materials {};
 };
@@ -70,6 +87,10 @@ struct ModelCreation
 {
     std::vector<Mesh::Vertex> vertexBuffer {};
     std::vector<uint32_t> indexBuffer {};
+
+    std::vector<Curve> curveBuffer {};
+    std::vector<AABB> aabbBuffer {};
+
     std::shared_ptr<SceneGraph> sceneGraph {};
 };
 
