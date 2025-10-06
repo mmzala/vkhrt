@@ -385,7 +385,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     vk::AccelerationStructureGeometryTrianglesDataKHR trianglesData {};
     trianglesData.vertexFormat = vk::Format::eR32G32B32Sfloat;
     trianglesData.vertexData = vertexBufferDeviceAddress;
-    trianglesData.maxVertex = model->verticesCount - 1;
+    trianglesData.maxVertex = model->vertexCount - 1;
     trianglesData.vertexStride = sizeof(Mesh::Vertex);
     trianglesData.indexType = vk::IndexType::eUint32;
     trianglesData.indexData = indexBufferDeviceAddress;

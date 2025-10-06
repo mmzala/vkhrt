@@ -14,7 +14,7 @@ struct Node
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
 
-struct AABB
+struct alignas(16) AABB
 {
     glm::vec3 min {};
     glm::vec3 max {};
@@ -26,7 +26,7 @@ struct Line
     glm::vec3 end {};
 };
 
-struct Curve
+struct alignas(16) Curve
 {
     glm::vec3 start {};
     glm::vec3 controlPoint1 {};
@@ -100,7 +100,13 @@ struct Model
 
     std::unique_ptr<Buffer> vertexBuffer {};
     std::unique_ptr<Buffer> indexBuffer {};
-    uint32_t verticesCount {};
+    uint32_t vertexCount {};
     uint32_t indexCount {};
+
+    std::unique_ptr<Buffer> curveBuffer {};
+    std::unique_ptr<Buffer> aabbBuffer {};
+    uint32_t curveCount {};
+    uint32_t aabbCount {};
+
     std::shared_ptr<SceneGraph> sceneGraph {};
 };

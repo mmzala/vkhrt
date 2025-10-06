@@ -272,7 +272,7 @@ ModelCreation ProcessHair(const ModelCreation& modelCreation)
         hair.aabbCount = aabbs.size();
     }
 
-    // Update geometry information in the model
+    // Update scene graph to use hair
     sceneGraph.meshes.clear();
 
     for (Node& node : sceneGraph.nodes)

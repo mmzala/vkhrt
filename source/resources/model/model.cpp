@@ -51,30 +51,35 @@ uint32_t Mesh::GetIndicesPerFaceNum() const
 
 Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
 {
-    verticesCount = creation.vertexBuffer.size();
-    indexCount = creation.indexBuffer.size();
     sceneGraph = creation.sceneGraph;
 
+    vertexCount = creation.vertexBuffer.size();
+    indexCount = creation.indexBuffer.size();
+
     // Upload to GPU
+    if (vertexCount != 0 && indexCount != 0)
     {
+        const size_t vertexBufferSize = sizeof(Mesh::Vertex) * vertexCount;
+        const size_t indexBufferSize = sizeof(AABB) * aabbCount;
+
         // Staging buffers
         BufferCreation vertexStagingBufferCreation {};
         vertexStagingBufferCreation.SetName(sceneGraph->sceneName + " - Vertex Staging Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
             .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
-            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+            .SetSize(vertexBufferSize);
         Buffer vertexStagingBuffer(vertexStagingBufferCreation, vulkanContext);
-        memcpy(vertexStagingBuffer.mappedPtr, creation.vertexBuffer.data(), sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+        memcpy(vertexStagingBuffer.mappedPtr, creation.vertexBuffer.data(), vertexBufferSize);
 
         BufferCreation indexStagingBufferCreation {};
         indexStagingBufferCreation.SetName(sceneGraph->sceneName + " - Index Staging Buffer")
             .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
             .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
             .SetIsMappable(true)
-            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+            .SetSize(indexBufferSize);
         Buffer indexStagingBuffer(indexStagingBufferCreation, vulkanContext);
-        memcpy(indexStagingBuffer.mappedPtr, creation.indexBuffer.data(), sizeof(uint32_t) * creation.indexBuffer.size());
+        memcpy(indexStagingBuffer.mappedPtr, creation.indexBuffer.data(), indexBufferSize);
 
         // GPU buffers
         vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
@@ -84,7 +89,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetUsageFlags(vk::BufferUsageFlagBits::eVertexBuffer | bufferUsage)
             .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
             .SetIsMappable(false)
-            .SetSize(sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
+            .SetSize(vertexBufferSize);
         vertexBuffer = std::make_unique<Buffer>(vertexBufferCreation, vulkanContext);
 
         BufferCreation indexBufferCreation {};
@@ -92,14 +97,68 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetUsageFlags(vk::BufferUsageFlagBits::eIndexBuffer | bufferUsage)
             .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
             .SetIsMappable(false)
-            .SetSize(sizeof(uint32_t) * creation.indexBuffer.size());
+            .SetSize(indexBufferSize);
         indexBuffer = std::make_unique<Buffer>(indexBufferCreation, vulkanContext);
 
         SingleTimeCommands commands(vulkanContext);
         commands.Record([&](vk::CommandBuffer commandBuffer)
             {
-                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, vertexBuffer->buffer, sizeof(Mesh::Vertex) * creation.vertexBuffer.size());
-                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, sizeof(uint32_t) * creation.indexBuffer.size()); });
+                VkCopyBufferToBuffer(commandBuffer, vertexStagingBuffer.buffer, vertexBuffer->buffer, vertexBufferSize);
+                VkCopyBufferToBuffer(commandBuffer, indexStagingBuffer.buffer, indexBuffer->buffer, indexBufferSize); });
+        commands.SubmitAndWait();
+    }
+
+    curveCount = creation.curveBuffer.size();
+    aabbCount = creation.aabbBuffer.size();
+
+    if (curveCount != 0 && aabbCount != 0)
+    {
+        const size_t curveBufferSize = sizeof(Curve) * curveCount;
+        const size_t aabbBufferSize = sizeof(AABB) * aabbCount;
+
+        // Staging buffers
+        BufferCreation curveStagingBufferCreation {};
+        curveStagingBufferCreation.SetName(sceneGraph->sceneName + " - Curve Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(curveBufferSize);
+        Buffer curveStagingBuffer(curveStagingBufferCreation, vulkanContext);
+        memcpy(curveStagingBuffer.mappedPtr, creation.curveBuffer.data(), curveBufferSize);
+
+        BufferCreation aabbStagingBufferCreation {};
+        aabbStagingBufferCreation.SetName(sceneGraph->sceneName + " - AABB Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(aabbBufferSize);
+        Buffer aabbStagingBuffer(aabbStagingBufferCreation, vulkanContext);
+        memcpy(aabbStagingBuffer.mappedPtr, creation.aabbBuffer.data(), aabbBufferSize);
+
+        // GPU buffers
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
+        BufferCreation curveBufferCreation {};
+        curveBufferCreation.SetName(sceneGraph->sceneName + " - Curve Buffer")
+            .SetUsageFlags(bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(curveBufferSize);
+        curveBuffer = std::make_unique<Buffer>(curveBufferCreation, vulkanContext);
+
+        BufferCreation aabbBufferCreation {};
+        aabbBufferCreation.SetName(sceneGraph->sceneName + " - AABB Buffer")
+            .SetUsageFlags(bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(aabbBufferSize);
+        aabbBuffer = std::make_unique<Buffer>(aabbBufferCreation, vulkanContext);
+
+        SingleTimeCommands commands(vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            {
+                VkCopyBufferToBuffer(commandBuffer, curveStagingBuffer.buffer, curveBuffer->buffer, curveBufferSize);
+                VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize); });
         commands.SubmitAndWait();
     }
 }
