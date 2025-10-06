@@ -216,6 +216,22 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
+std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius)
+{
+    std::vector<AABB> aabbs(curves.size());
+
+    for (uint32_t i = 0; i < curves.size(); ++i)
+    {
+        const Curve& curve = curves[i];
+        AABB& aabb = aabbs[i];
+
+        aabb.min = glm::min(glm::min(curve.start, curve.end), glm::min(curve.controlPoint1, curve.controlPoint2)) - curveRadius;
+        aabb.max = glm::max(glm::max(curve.start, curve.end), glm::max(curve.controlPoint1, curve.controlPoint2)) + curveRadius;
+    }
+
+    return aabbs;
+}
+
 ModelCreation ProcessHair(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
@@ -246,11 +262,14 @@ ModelCreation ProcessHair(const ModelCreation& modelCreation)
         const std::vector<Curve> curves = GenerateCurves(lines);
         newModelCreation.curveBuffer.insert(newModelCreation.curveBuffer.end(), curves.begin(), curves.end());
 
-        // TODO: Create aabb's from curves
+        // Create aabb's from curves
+        constexpr float hairCurveRadius = 0.2f;
+        const std::vector<AABB> aabbs = GenerateAABBs(curves, hairCurveRadius);
+        newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
 
         // Update hair information
         hair.curveCount = curves.size();
-        // hair.aabbCount = 0;
+        hair.aabbCount = aabbs.size();
     }
 
     // Update geometry information in the model
