@@ -246,7 +246,7 @@ ModelCreation GenerateHairMeshesFromHairModel(const ModelCreation& modelCreation
 
         // Create mesh from line segments
         Mesh& newMesh = newMeshes[meshIndex];
-        newMesh = GenerateMeshGeometryTubes(curves, newVertexBuffer, newIndexBuffer, 0.02f, 3, 4);
+        newMesh = GenerateMeshGeometryTubes(curves, newVertexBuffer, newIndexBuffer, 0.02f, 3, 3);
         newMesh.material = oldMesh.material;
     }
 
