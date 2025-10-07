@@ -10,6 +10,7 @@ file(GLOB_RECURSE SHADERS CONFIGURE_DEPENDS
         ${SHADER_DIR}/*.rchit
         ${SHADER_DIR}/*.rmiss
         ${SHADER_DIR}/*.rgen
+        ${SHADER_DIR}/*.rint
 )
 
 file(GLOB_RECURSE GLSL_SHADERS CONFIGURE_DEPENDS
