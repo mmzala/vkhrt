@@ -60,7 +60,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
     if (vertexCount != 0 && indexCount != 0)
     {
         const size_t vertexBufferSize = sizeof(Mesh::Vertex) * vertexCount;
-        const size_t indexBufferSize = sizeof(AABB) * aabbCount;
+        const size_t indexBufferSize = sizeof(uint32_t) * indexCount;
 
         // Staging buffers
         BufferCreation vertexStagingBufferCreation {};
