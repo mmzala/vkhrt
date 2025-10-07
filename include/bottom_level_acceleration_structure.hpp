@@ -9,8 +9,15 @@ class BindlessResources;
 struct Model;
 struct Buffer;
 
+enum class BLASType : uint8_t
+{
+    eMesh,
+    eHair,
+};
+
 struct BLASInput
 {
+    BLASType type = BLASType::eMesh;
     glm::mat4 transform {};
     GeometryNodeCreation node {};
     vk::AccelerationStructureGeometryKHR geometry {};
@@ -27,11 +34,13 @@ public:
     NON_COPYABLE(BottomLevelAccelerationStructure);
 
     [[nodiscard]] vk::AccelerationStructureKHR Structure() const { return _vkStructure; }
+    [[nodiscard]] BLASType Type() const { return _type; }
     [[nodiscard]] const glm::mat4& Transform() const { return _transform; }
 
 private:
     void InitializeStructure(const BLASInput& input);
 
+    BLASType _type = BLASType::eMesh;
     glm::mat4 _transform {};
     std::shared_ptr<VulkanContext> _vulkanContext;
 };

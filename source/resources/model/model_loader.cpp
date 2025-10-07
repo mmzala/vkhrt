@@ -340,6 +340,6 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
     }
 
     // Create mesh from hair strands
-    ModelCreation newModelCreation = ProcessHairDebugMesh(modelCreation);
+    ModelCreation newModelCreation = ProcessHair(modelCreation);
     return std::make_unique<Model>(newModelCreation, _vulkanContext);
 }

@@ -65,7 +65,8 @@ std::vector<Line> GenerateLines(const Mesh& mesh, const std::vector<Mesh::Vertex
 
 std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension = 1.0f)
 {
-    std::vector<Curve> curves(lines.size());
+    std::vector<Curve> curves {};
+    curves.reserve(lines.size());
 
     // TODO: Handle line array that has multiple hair strands
 
@@ -78,13 +79,12 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
 
     for (uint32_t i = 1; i < linesToProcess.size() - 1; ++i)
     {
-        Curve& curve = curves[i];
-
         glm::vec3 p0 = linesToProcess[i - 1].start;
         glm::vec3 p1 = linesToProcess[i].start;
         glm::vec3 p2 = linesToProcess[i].end;
         glm::vec3 p3 = linesToProcess[i + 1].end;
 
+        Curve& curve = curves.emplace_back();
         curve.start = p1;
         curve.controlPoint1 = p1 + (p2 - p0) * (tension / 6.0f);
         curve.controlPoint2 = p2 - (p3 - p1) * (tension / 6.0f);
