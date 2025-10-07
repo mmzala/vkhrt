@@ -1,0 +1,28 @@
+#version 460
+#extension GL_EXT_ray_tracing : enable
+
+struct Ray
+{
+    vec3 origin;
+    vec3 direction;
+};
+
+float prhi(Ray ray)
+{
+    // TODO: Phantom ray hair intersector
+    return 1.0;
+}
+
+void main()
+{
+    Ray ray;
+    ray.origin    = gl_WorldRayOriginEXT;
+    ray.direction = gl_WorldRayDirectionEXT;
+
+    float tHit = prhi(ray);
+
+    if (tHit > 0.0)
+    {
+        reportIntersectionEXT(tHit, 0); // TODO: Additional param
+    }
+}

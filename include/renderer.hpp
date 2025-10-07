@@ -36,7 +36,7 @@ private:
 
     void InitializeDescriptorSets();
     void InitializePipeline();
-    void InitializeShaderBindingTable();
+    void InitializeShaderBindingTable(const vk::RayTracingPipelineCreateInfoKHR& pipelineInfo);
 
     void InitializeBLAS();
 

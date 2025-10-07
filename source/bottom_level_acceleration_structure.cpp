@@ -5,7 +5,8 @@
 #include "vulkan_context.hpp"
 
 BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(const BLASInput& input, const std::shared_ptr<BindlessResources>& resources, const std::shared_ptr<VulkanContext>& vulkanContext)
-    : _transform(input.transform)
+    : _type(input.type)
+    , _transform(input.transform)
     , _vulkanContext(vulkanContext)
 {
     InitializeStructure(input);
