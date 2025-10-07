@@ -235,7 +235,7 @@ std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRad
 ModelCreation ProcessHair(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
-            { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
     if (it != modelCreation.sceneGraph->meshes.end())
     {
         spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
@@ -287,7 +287,7 @@ ModelCreation ProcessHair(const ModelCreation& modelCreation)
 ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
-            { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
     if (it != modelCreation.sceneGraph->meshes.end())
     {
         spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
