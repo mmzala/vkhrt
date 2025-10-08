@@ -66,7 +66,7 @@ Application::Application()
     flyCameraCreation.aspectRatio = static_cast<float>(vulkanInfo.width) / static_cast<float>(vulkanInfo.height);
     flyCameraCreation.farPlane = 1000.0f;
     flyCameraCreation.nearPlane = 0.1f;
-    flyCameraCreation.movementSpeed = 0.2f;
+    flyCameraCreation.movementSpeed = 0.02f;
     flyCameraCreation.mouseSensitivity = 0.2f;
     _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
 
