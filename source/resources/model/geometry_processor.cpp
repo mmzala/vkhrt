@@ -68,8 +68,6 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
     std::vector<Curve> curves {};
     curves.reserve(lines.size());
 
-    // TODO: Handle line array that has multiple hair strands
-
     // Duplicate end-lines so Catmull–Rom works at the ends
     std::vector<Line> linesToProcess {};
     linesToProcess.reserve(lines.size() + 2);
@@ -79,10 +77,16 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
 
     for (uint32_t i = 1; i < linesToProcess.size() - 1; ++i)
     {
-        glm::vec3 p0 = linesToProcess[i - 1].start;
-        glm::vec3 p1 = linesToProcess[i].start;
-        glm::vec3 p2 = linesToProcess[i].end;
-        glm::vec3 p3 = linesToProcess[i + 1].end;
+        // Detect if the next and previous curve segments are on the same hair strand.
+        // If they are, use them, if they aren't reuse the current line to generate
+        // the curve to avoid generation based on unrelated hair strands
+        uint32_t prevIndex = lines[i - 1].end == lines[i].start ? i - 1 : i;
+        uint32_t nextIndex = lines[i].end == lines[i + 1].start ? i + 1 : i;
+
+        glm::vec3 p0 = lines[prevIndex].start;
+        glm::vec3 p1 = lines[i].start;
+        glm::vec3 p2 = lines[i].end;
+        glm::vec3 p3 = lines[nextIndex].end;
 
         Curve& curve = curves.emplace_back();
         curve.start = p1;
@@ -188,7 +192,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
 
             // Generate triangle indices
             uint32_t ringSize = numRadialSamples;
-            const uint32_t firstCubeVertex = vertexBuffer.size();
+            const uint32_t firstVertex = vertexBuffer.size();
 
             for (uint32_t i = 0; i < numCurveSamples; i++)
             {
@@ -199,13 +203,13 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
                 {
                     uint32_t nextJ = (j + 1) % numRadialSamples;
 
-                    indexBuffer.push_back(firstCubeVertex + ringStart + j);
-                    indexBuffer.push_back(firstCubeVertex + nextRingStart + j);
-                    indexBuffer.push_back(firstCubeVertex + nextRingStart + nextJ);
+                    indexBuffer.push_back(firstVertex + ringStart + j);
+                    indexBuffer.push_back(firstVertex + nextRingStart + j);
+                    indexBuffer.push_back(firstVertex + nextRingStart + nextJ);
 
-                    indexBuffer.push_back(firstCubeVertex + ringStart + j);
-                    indexBuffer.push_back(firstCubeVertex + nextRingStart + nextJ);
-                    indexBuffer.push_back(firstCubeVertex + ringStart + nextJ);
+                    indexBuffer.push_back(firstVertex + ringStart + j);
+                    indexBuffer.push_back(firstVertex + nextRingStart + nextJ);
+                    indexBuffer.push_back(firstVertex + ringStart + nextJ);
 
                     mesh.indexCount += 6;
                 }
@@ -216,7 +220,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
-std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius)
+std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius = 0.05f)
 {
     std::vector<AABB> aabbs(curves.size());
 
@@ -263,7 +267,7 @@ ModelCreation ProcessHair(const ModelCreation& modelCreation)
         newModelCreation.curveBuffer.insert(newModelCreation.curveBuffer.end(), curves.begin(), curves.end());
 
         // Create aabb's from curves
-        constexpr float hairCurveRadius = 0.2f;
+        constexpr float hairCurveRadius = 0.02f;
         const std::vector<AABB> aabbs = GenerateAABBs(curves, hairCurveRadius);
         newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
 
