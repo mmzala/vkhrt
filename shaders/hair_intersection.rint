@@ -16,13 +16,13 @@ float prhi(Ray ray)
 void main()
 {
     Ray ray;
-    ray.origin    = gl_WorldRayOriginEXT;
+    ray.origin = gl_WorldRayOriginEXT;
     ray.direction = gl_WorldRayDirectionEXT;
 
     float tHit = prhi(ray);
 
     if (tHit > 0.0)
     {
-        reportIntersectionEXT(tHit, 0); // TODO: Additional param
+        reportIntersectionEXT(tHit, 0);
     }
 }
