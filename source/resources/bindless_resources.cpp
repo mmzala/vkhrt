@@ -265,13 +265,13 @@ void BindlessResources::InitializeSet()
     geometryNodeBinding.descriptorType = vk::DescriptorType::eStorageBuffer;
     geometryNodeBinding.descriptorCount = 1;
     geometryNodeBinding.binding = static_cast<uint32_t>(BindlessBinding::eGeometryNodes);
-    geometryNodeBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+    geometryNodeBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eIntersectionKHR;
 
     vk::DescriptorSetLayoutBinding& blasInstanceBinding = bindings[3];
     blasInstanceBinding.descriptorType = vk::DescriptorType::eStorageBuffer;
     blasInstanceBinding.descriptorCount = 1;
     blasInstanceBinding.binding = static_cast<uint32_t>(BindlessBinding::eBLASInstances);
-    blasInstanceBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+    blasInstanceBinding.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eIntersectionKHR;
 
     vk::StructureChain<vk::DescriptorSetLayoutCreateInfo, vk::DescriptorSetLayoutBindingFlagsCreateInfo> structureChain;
 

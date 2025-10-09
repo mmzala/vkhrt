@@ -1,5 +1,11 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_nonuniform_qualifier : enable
+#extension GL_EXT_buffer_reference2 : enable
+#extension GL_EXT_scalar_block_layout : enable
+#extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
+
+#include "bindless.glsl"
 
 struct Ray
 {
@@ -7,19 +13,46 @@ struct Ray
     vec3 direction;
 };
 
-float prhi(Ray ray)
+struct Curve
+{
+    vec3 start;
+    vec3 controlPoint1;
+    vec3 controlPoint2;
+    vec3 end;
+};
+
+layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Curves { Curve curves[]; };
+
+vec3 SampleCurve(Curve curve, float t)
+{
+    float u = 1.0f - t;
+    float tt = t * t;
+    float uu = u * u;
+    float uuu = uu * u;
+    float ttt = tt * t;
+
+    return uuu * curve.start + 3.0f * uu * t * curve.controlPoint1 + 3.0f * u * tt * curve.controlPoint2 + ttt * curve.end;
+}
+
+float prhi(Curve curve, Ray ray)
 {
     // TODO: Phantom ray hair intersector
-    return 1.0;
+    return curve.start.y < 151.0 ? 1.0 : -1.0;
 }
 
 void main()
 {
+    BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
+    GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
+
+    Curves curves = Curves(geometryNode.vertexBufferDeviceAddress);
+    Curve curve = curves.curves[gl_PrimitiveID];
+
     Ray ray;
     ray.origin = gl_WorldRayOriginEXT;
     ray.direction = gl_WorldRayDirectionEXT;
 
-    float tHit = prhi(ray);
+    float tHit = prhi(curve, ray);
 
     if (tHit > 0.0)
     {
