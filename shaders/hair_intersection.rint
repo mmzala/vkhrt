@@ -21,6 +21,14 @@ struct Curve
     vec3 end;
 };
 
+struct Cone
+{
+    vec3 center;
+    float radius;
+    vec3 axis;
+    float slant;
+};
+
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Curves { Curve curves[]; };
 
 vec3 SampleCurve(Curve curve, float t)
@@ -34,9 +42,54 @@ vec3 SampleCurve(Curve curve, float t)
     return uuu * curve.start + 3.0f * uu * t * curve.controlPoint1 + 3.0f * u * tt * curve.controlPoint2 + ttt * curve.end;
 }
 
-float prhi(Curve curve, Ray ray)
+// Function taken from Phrantom Ray Hair Intersector paper.
+// https://research.nvidia.com/sites/default/files/pubs/2018-08_Phantom-Ray-Hair-Intersector//Phantom-HPG%202018.pdf
+bool RayConeIntersect(Cone cone)
 {
-    // TODO: Phantom ray hair intersector
+    // Assuming ray centric coordinates:
+    // ray.origin = {0,0,0}; ray.direction = {0,0,1};
+
+    float r2 = cone.radius * cone.radius;
+    float drr = cone.radius * cone.slant; // slant could be either positive or negative (0 for cyllinder)
+
+    // All possible combinations of x * y terms
+    float ddd = cone.axis.x * cone.axis.x + cone.axis.y * cone.axis.y;
+    float dp = cone.center.x * cone.center.x + cone.center.y * cone.center.y;
+    float cdd = cone.center.x * cone.axis.x + cone.center.y * cone.axis.y;
+    float cxd = cone.center.x * cone.axis.y - cone.center.y * cone.axis.x;
+
+    // Compute a, b, c in (a − 2 b s + c s2), where s for ray cone
+    float c = ddd;
+    float b = cone.axis.z * (drr - cdd);
+    float cdz2 = cone.axis.z * cone.axis.z;
+    ddd += cdz2;
+    float a = 2.0 * drr * cdd + cxd * cxd - ddd * r2 + dp * cdz2;
+
+    // dr2 adjustments
+    // It does not help much with neither accuracy nor performance
+    /*
+    float qs = (dr * dr) / ddd;
+    a -= qs * cdd * cdd;
+    b -= qs * cone.axis.z * cdd;
+    c -= qs * cdz2;
+    */
+
+    float det = b * b - a * c;
+
+    // Additional hit info
+    /*
+    float s = (b - (det < 0.0 ? sqrt(det) : 0)) / c;    // ray.s − c0.z for ray ∩ cone(t)
+    float dt = (s * cone.axis.z - cdd) / ddd;           // dt to the (ray ∩ cone) from t
+    float dc = s * s + dp;                              // |(ray ∩ cone(t)) - curve(t)|2
+    float sp = cdd / cone.axis.z;                       //  ray.s − c0.z for ray ∩ plane(t)
+    dp += sp * sp;                                      // |(ray ∩ plane(t)) - curve(t)|2
+    */
+
+    return det > 0.0; // true (real) or false (phantom)
+}
+
+float Prhi(Curve curve, Ray ray)
+{
     return curve.start.y < 151.0 ? 1.0 : -1.0;
 }
 
@@ -52,7 +105,7 @@ void main()
     ray.origin = gl_WorldRayOriginEXT;
     ray.direction = gl_WorldRayDirectionEXT;
 
-    float tHit = prhi(curve, ray);
+    float tHit = Prhi(curve, ray);
 
     if (tHit > 0.0)
     {
