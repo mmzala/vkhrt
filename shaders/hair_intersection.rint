@@ -145,7 +145,7 @@ float Prhi(Curve curve, Ray ray)
     vec3 curveDirection = normalize(rccCurve.end - rccCurve.start);
     float t = dot(curveDirection, rayDirection) > 0.0 ? 0.0 : 1.0;
 
-    uint maxIterations = 8;
+    uint maxIterations = 1;
 
     for (uint i = 0; i < maxIterations; ++i)
     {
@@ -155,14 +155,19 @@ float Prhi(Curve curve, Ray ray)
         cone.axis = SampleCurveAxis(rccCurve, t);
         cone.slant = 0.0; // Cyllinder
 
-        // TODO: Test ray-cone intersection (and pad phantom rays to touch cone)
+        bool realIntersection = RayConeIntersect(cone);
+        if (realIntersection)
+        {
+            return 1.0;
+        }
+        // TODO: pad phantom rays to touch cone if not real intersection
 
         // TODO: Map intersection point on cone to curve point t
     }
 
     // TODO: Final distance check from ray to curve(t)
 
-    return 1.0;
+    return 0.0;
 }
 
 void main()
