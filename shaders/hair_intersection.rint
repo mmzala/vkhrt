@@ -145,6 +145,8 @@ Curve CreateRCCCurve(Curve curve, mat4 rccTransform)
 
 float Prhi(Curve curve, Ray ray)
 {
+    // TODO: Early out with cyllinder check
+
     // Convert curve to ray-centric coords
     mat4 rccTransform = CreateRCCMatrix(ray);
     Curve rccCurve = CreateRCCCurve(curve, rccTransform);
@@ -152,71 +154,87 @@ float Prhi(Curve curve, Ray ray)
     // Choose end point to start
     const vec3 rayDirection = vec3(0.0, 0.0, 1.0);
     vec3 curveDirection = normalize(rccCurve.end - rccCurve.start);
-    float t = dot(curveDirection, rayDirection) > 0.0 ? 0.0 : 1.0;
+    float tStart = dot(curveDirection, rayDirection) > 0.0 ? 0.0 : 1.0;
 
-    uint maxIterations = 8;
-    RayConeIntersection rci;
-    float told = 0.0f;
-    float dt1 = 0.0f;
-    float dt2 = 0.0f;
+    float result = 0.0;
 
-    // TODO: Iterate from other side of curve
-
-    for (uint i = 0; i < maxIterations; ++i)
+    for (uint side = 0; side < 2; ++side)
     {
-        Cone cone;
-        cone.center = SampleCurvePoint(rccCurve, t);
-        cone.radius = 0.02; // TODO: Get from cpu
-        cone.axis = SampleCurveAxis(rccCurve, t);
-        cone.slant = 0.0; // Cyllinder
+        const uint maxIterations = 8;
+        float t = tStart;
 
-        rci = RayConeIntersect(cone);
+        RayConeIntersection rci;
+        float told = 0.0;
+        float dt1 = 0.0;
+        float dt2 = 0.0;
 
-        // Paper stops iterations on each instance of "abs(rci.dt) < 5e-5f"
-        if (rci.realIntersection && abs(rci.dt) < 5e-5f)
+        for (uint i = 0; i < maxIterations; ++i)
         {
-            // TODO: Add hit info
-            return 1.0;
-        }
+            Cone cone;
+            cone.center = SampleCurvePoint(rccCurve, t);
+            cone.radius = 0.02; // TODO: Get from cpu
+            cone.axis = SampleCurveAxis(rccCurve, t);
+            cone.slant = 0.0; // Cyllinder
 
-        rci.dt = min(rci.dt, 0.5f);
-        rci.dt = max(rci.dt, -0.5f);
+            rci = RayConeIntersect(cone);
 
-        dt1 = dt2;
-        dt2 = rci.dt;
-
-        // Regula falsi
-        if (dt1 * dt2 < 0.0f)
-        {
-            float tnext = 0.0f;
-
-            // Switching to the bisection every 4th iteration
-            if ((i & 3) == 0)
+            // Paper stops iterations on each instance of "abs(rci.dt) < 5e-5"
+            if (rci.realIntersection && abs(rci.dt) < 5e-5)
             {
-                tnext = 0.5f * (told + t);
+                // TODO: Add hit info
+                result = 1.0;
+                break;
+            }
+
+            rci.dt = min(rci.dt, 0.5);
+            rci.dt = max(rci.dt, -0.5);
+
+            dt1 = dt2;
+            dt2 = rci.dt;
+
+            // Regula falsi
+            if (dt1 * dt2 < 0.0)
+            {
+                float tnext = 0.0;
+
+                // Switching to the bisection every 4th iteration
+                if ((i & 3) == 0)
+                {
+                    tnext = 0.5 * (told + t);
+                }
+                else
+                {
+                    tnext = (dt2 * told - dt1 * t) / (dt2 - dt1);
+                }
+
+                told = t;
+                t = tnext;
             }
             else
             {
-                tnext = (dt2 * told - dt1 * t) / (dt2 - dt1);
+                told = t;
+                t += rci.dt;
             }
 
-            told = t;
-            t = tnext;
-        }
-        else
-        {
-            told = t;
-            t += rci.dt;
+            // Outside of curve, so we stop
+            if (t < 0.0 || t > 1.0)
+            {
+                break;
+            }
         }
 
-        // Outside of curve, so we stop
-        if (t < 0.0f || t > 1.0f)
+        // Try convernging from other side if we don't get a hit from the closest directional side
+        if (result != 1.0)
+        {
+            tStart = 1.0 - tStart;
+        }
+        else
         {
             break;
         }
     }
 
-    return 0.0;
+    return result;
 }
 
 void main()
