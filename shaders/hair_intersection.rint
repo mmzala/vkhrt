@@ -154,7 +154,13 @@ float Prhi(Curve curve, Ray ray)
     vec3 curveDirection = normalize(rccCurve.end - rccCurve.start);
     float t = dot(curveDirection, rayDirection) > 0.0 ? 0.0 : 1.0;
 
-    uint maxIterations = 1;
+    uint maxIterations = 8;
+    RayConeIntersection rci;
+    float told = 0.0f;
+    float dt1 = 0.0f;
+    float dt2 = 0.0f;
+
+    // TODO: Iterate from other side of curve
 
     for (uint i = 0; i < maxIterations; ++i)
     {
@@ -164,17 +170,51 @@ float Prhi(Curve curve, Ray ray)
         cone.axis = SampleCurveAxis(rccCurve, t);
         cone.slant = 0.0; // Cyllinder
 
-        RayConeIntersection result = RayConeIntersect(cone);
-        if (result.realIntersection)
+        rci = RayConeIntersect(cone);
+
+        // Paper stops iterations on each instance of "abs(rci.dt) < 5e-5f"
+        if (rci.realIntersection && abs(rci.dt) < 5e-5f)
         {
+            // TODO: Add hit info
             return 1.0;
         }
-        // TODO: pad phantom rays to touch cone if not real intersection
 
-        // TODO: Map intersection point on cone to curve point t
+        rci.dt = min(rci.dt, 0.5f);
+        rci.dt = max(rci.dt, -0.5f);
+
+        dt1 = dt2;
+        dt2 = rci.dt;
+
+        // Regula falsi
+        if (dt1 * dt2 < 0.0f)
+        {
+            float tnext = 0.0f;
+
+            // Switching to the bisection every 4th iteration
+            if ((i & 3) == 0)
+            {
+                tnext = 0.5f * (told + t);
+            }
+            else
+            {
+                tnext = (dt2 * told - dt1 * t) / (dt2 - dt1);
+            }
+
+            told = t;
+            t = tnext;
+        }
+        else
+        {
+            told = t;
+            t += rci.dt;
+        }
+
+        // Outside of curve, so we stop
+        if (t < 0.0f || t > 1.0f)
+        {
+            break;
+        }
     }
-
-    // TODO: Final distance check from ray to curve(t)
 
     return 0.0;
 }
