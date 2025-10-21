@@ -55,9 +55,19 @@ vec3 SampleCurveAxis(Curve curve, float t)
         + 3.0f * t * t * curve.end;
 }
 
+struct RayConeIntersection
+{
+    bool realIntersection;
+    float s;    // ray.s − c0.z for ray ∩ cone(t)
+    float dt;   // dt to the (ray ∩ cone) from t
+    float dp;   // |(ray ∩ plane(t)) - curve(t)|2
+    float dc;   // |(ray ∩ cone(t)) - curve(t)|2
+    float sp;   // ray.s − c0.z for ray ∩ plane(t)
+};
+
 // Function taken from Phrantom Ray Hair Intersector paper.
 // https://research.nvidia.com/sites/default/files/pubs/2018-08_Phantom-Ray-Hair-Intersector//Phantom-HPG%202018.pdf
-bool RayConeIntersect(Cone cone)
+RayConeIntersection RayConeIntersect(Cone cone)
 {
     // Assuming ray centric coordinates:
     // ray.origin = {0,0,0}; ray.direction = {0,0,1};
@@ -89,16 +99,15 @@ bool RayConeIntersect(Cone cone)
 
     float det = b * b - a * c;
 
-    // Additional hit info
-    /*
-    float s = (b - (det < 0.0 ? sqrt(det) : 0)) / c;    // ray.s − c0.z for ray ∩ cone(t)
-    float dt = (s * cone.axis.z - cdd) / ddd;           // dt to the (ray ∩ cone) from t
-    float dc = s * s + dp;                              // |(ray ∩ cone(t)) - curve(t)|2
-    float sp = cdd / cone.axis.z;                       //  ray.s − c0.z for ray ∩ plane(t)
-    dp += sp * sp;                                      // |(ray ∩ plane(t)) - curve(t)|2
-    */
+    RayConeIntersection result;
+    result.realIntersection = det > 0.0;                    // true (real) or false (phantom)
+    result.s = (b - (det < 0.0 ? sqrt(det) : 0)) / c;       // ray.s − c0.z for ray ∩ cone(t)
+    result.dt = (result.s * cone.axis.z - cdd) / ddd;       // dt to the (ray ∩ cone) from t
+    result.dc = result.s * result.s + dp;                   // |(ray ∩ cone(t)) - curve(t)|2
+    result.sp = cdd / cone.axis.z;                          //  ray.s − c0.z for ray ∩ plane(t)
+    result.dp = dp + result.sp * result.sp;                 // |(ray ∩ plane(t)) - curve(t)|2
 
-    return det > 0.0; // true (real) or false (phantom)
+    return result;
 }
 
 void MakeOrthonormalBasis(out vec3 u, out vec3 v, vec3 w)
@@ -155,8 +164,8 @@ float Prhi(Curve curve, Ray ray)
         cone.axis = SampleCurveAxis(rccCurve, t);
         cone.slant = 0.0; // Cyllinder
 
-        bool realIntersection = RayConeIntersect(cone);
-        if (realIntersection)
+        RayConeIntersection result = RayConeIntersect(cone);
+        if (result.realIntersection)
         {
             return 1.0;
         }
