@@ -7,21 +7,7 @@
 
 #include "bindless.glsl"
 #include "ray.glsl"
-
-struct Vertex
-{
-    vec3 position;
-    vec3 normal;
-    vec2 texCoord;
-};
-
-struct Triangle
-{
-	Vertex vertices[3];
-	vec3 position;
-	vec3 normal;
-	vec2 texCoord;
-};
+#include "primitives.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
 layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
@@ -31,7 +17,7 @@ hitAttributeEXT vec2 attribs;
 
 Triangle UnpackGeometry(GeometryNode geometryNode)
 {
-    Vertices vertices = Vertices(geometryNode.vertexBufferDeviceAddress);
+    Vertices vertices = Vertices(geometryNode.primitiveBufferDeviceAddress);
     Indices indices = Indices(geometryNode.indexBufferDeviceAddress);
 
     Triangle triangle;

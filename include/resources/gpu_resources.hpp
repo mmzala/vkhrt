@@ -189,7 +189,7 @@ struct Material
 
 struct GeometryNodeCreation
 {
-    vk::DeviceAddress vertexBufferDeviceAddress = 0;
+    vk::DeviceAddress primitiveBufferDeviceAddress = 0;
     vk::DeviceAddress indexBufferDeviceAddress = 0;
     ResourceHandle<Material> material = ResourceHandle<Material>::Null();
 };
@@ -198,7 +198,7 @@ struct GeometryNode
 {
     explicit GeometryNode(const GeometryNodeCreation& creation);
 
-    uint64_t vertexBufferDeviceAddress = 0;
+    uint64_t primitiveBufferDeviceAddress = 0;
     uint64_t indexBufferDeviceAddress = 0;
     uint32_t materialIndex = NULL_RESOURCE_INDEX_VALUE;
     glm::vec3 _PADDING_{};
