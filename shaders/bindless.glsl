@@ -34,7 +34,7 @@ layout (std140, set = 0, binding = 1) uniform Materials
 
 struct GeometryNode
 {
-    uint64_t vertexBufferDeviceAddress;
+    uint64_t primitiveBufferDeviceAddress;
     uint64_t indexBufferDeviceAddress;
     uint materialIndex;
 };

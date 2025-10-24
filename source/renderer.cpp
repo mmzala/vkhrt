@@ -439,7 +439,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     buildRangeInfo.transformOffset = 0;
 
     GeometryNodeCreation& nodeCreation = output.node;
-    nodeCreation.vertexBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
+    nodeCreation.primitiveBufferDeviceAddress = vertexBufferDeviceAddress.deviceAddress;
     nodeCreation.indexBufferDeviceAddress = indexBufferDeviceAddress.deviceAddress;
     nodeCreation.material = mesh.material;
 
@@ -476,7 +476,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     curvePrimitiveBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->curveBuffer->buffer);
 
     GeometryNodeCreation& nodeCreation = output.node;
-    nodeCreation.vertexBufferDeviceAddress = curvePrimitiveBufferDeviceAddress.deviceAddress; // TODO: Change naming
+    nodeCreation.primitiveBufferDeviceAddress = curvePrimitiveBufferDeviceAddress.deviceAddress;
     nodeCreation.material = hair.material;
 
     return output;

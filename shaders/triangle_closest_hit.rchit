@@ -17,7 +17,7 @@ hitAttributeEXT vec2 attribs;
 
 Triangle UnpackGeometry(GeometryNode geometryNode)
 {
-    Vertices vertices = Vertices(geometryNode.vertexBufferDeviceAddress);
+    Vertices vertices = Vertices(geometryNode.primitiveBufferDeviceAddress);
     Indices indices = Indices(geometryNode.indexBufferDeviceAddress);
 
     Triangle triangle;

@@ -125,7 +125,7 @@ void main()
     BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
     GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
 
-    Curves curves = Curves(geometryNode.vertexBufferDeviceAddress);
+    Curves curves = Curves(geometryNode.primitiveBufferDeviceAddress);
     Curve curve = curves.curves[gl_PrimitiveID];
 
     Ray ray;
