@@ -1,8 +1,16 @@
 # vkhrt
 
-A work-in-progress hair ray-tracer built using Vulkan and the `VK_KHR_ray_tracing_pipeline` extension. The renderer supports a wide range of 3D hair model formats using line primitives via Assimp, enabling the import of virtually any format supported by the library.
+A work-in-progress hair ray-tracer built using Vulkan and the `VK_KHR_ray_tracing_pipeline` extension with the aim to compare different algorithms. The renderer supports a wide range of 3D hair model formats using line primitives via Assimp, enabling the import of virtually any format supported by the library.
 
-The first and currently in development hair rendering technique is the [`Phantom Hair Ray Intersector` researched and developed by Alexander Reshtov and David Luebke](https://research.nvidia.com/sites/default/files/pubs/2018-08_Phantom-Ray-Hair-Intersector//Phantom-HPG%202018.pdf). In the future I plan to add [Nvidia's `Disjoint Orthogonal Triangle Strips`, `Linear Swept Sphere`](https://developer.nvidia.com/blog/render-path-traced-hair-in-real-time-with-nvidia-geforce-rtx-50-series-gpus) and voxalized hair rendering based on [Unreal Engine 5's voxalized foliage rendering showcased in the Witcher 4 demo](https://www.youtube.com/watch?v=Nthv4xF_zHU).
+<img width="875" height="933" alt="image" src="https://github.com/user-attachments/assets/bbf06303-3df0-46ea-b6b7-9d604a748286"/>
+
+<img width="1392" height="611" alt="image" src="https://github.com/user-attachments/assets/59cefc14-5ed9-42f6-bf39-9ae048323153"/>
+
+The [`Phantom Hair Ray Intersector`](https://research.nvidia.com/sites/default/files/pubs/2018-08_Phantom-Ray-Hair-Intersector//Phantom-HPG%202018.pdf) researched and developed by Alexander Reshtov and David Luebke is the currently working and only implemented algorithm which can be seen in the images above. In the future I plan to add 3 other algorithms in the following order:
+
+- [Nvidia's `Disjoint Orthogonal Triangle Strips`](https://developer.nvidia.com/blog/render-path-traced-hair-in-real-time-with-nvidia-geforce-rtx-50-series-gpus)
+- [Nvidia's `Linear Swept Sphere`](https://developer.nvidia.com/blog/render-path-traced-hair-in-real-time-with-nvidia-geforce-rtx-50-series-gpus)
+- Voxalized hair ray-tracing based on Unreal Engine 5's voxalized foliage rendering showcased in [the Witcher 4 demo](https://www.youtube.com/watch?v=Nthv4xF_zHU).
 
 ## Build Instructions
 
