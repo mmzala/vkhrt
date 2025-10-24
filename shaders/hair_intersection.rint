@@ -6,12 +6,7 @@
 #extension GL_EXT_shader_explicit_arithmetic_types_int64 : enable
 
 #include "bindless.glsl"
-
-struct Ray
-{
-    vec3 origin;
-    vec3 direction;
-};
+#include "ray.glsl"
 
 struct Curve
 {
@@ -64,7 +59,7 @@ vec3 SampleCurveAxis(Curve curve, float t)
 
 struct RayConeIntersection
 {
-    bool realIntersection;
+    bool isIntersection;
     float s;    // ray.s − c0.z for ray ∩ cone(t)
     float dt;   // dt to the (ray ∩ cone) from t
     float dp;   // |(ray ∩ plane(t)) - curve(t)|2
@@ -107,7 +102,7 @@ RayConeIntersection RayConeIntersectRCC(Cone cone)
     float det = b * b - a * c;
 
     RayConeIntersection result;
-    result.realIntersection = det > 0.0;                    // true (real) or false (phantom)
+    result.isIntersection = det > 0.0;                      // true (real) or false (phantom)
     result.s = (b - (det < 0.0 ? sqrt(det) : 0)) / c;       // ray.s − c0.z for ray ∩ cone(t)
     result.dt = (result.s * cone.axis.z - cdd) / ddd;       // dt to the (ray ∩ cone) from t
     result.dc = result.s * result.s + dp;                   // |(ray ∩ cone(t)) - curve(t)|2
@@ -117,37 +112,15 @@ RayConeIntersection RayConeIntersectRCC(Cone cone)
     return result;
 }
 
-void MakeOrthonormalBasis(out vec3 u, out vec3 v, vec3 w)
+Curve TransformCurve(Curve curve, mat4 transform)
 {
-    v = abs(w.x) > abs(w.y) ? normalize(vec3(-w.z, 0.0, w.x)) : normalize(vec3(0.0, w.z, -w.y));
-    u = cross(v, w);
-}
+    Curve transformedCurve;
+    transformedCurve.start = (transform * vec4(curve.start, 1.0)).xyz;
+    transformedCurve.controlPoint1 = (transform * vec4(curve.controlPoint1, 1.0)).xyz;
+    transformedCurve.controlPoint2 = (transform * vec4(curve.controlPoint2, 1.0)).xyz;
+    transformedCurve.end = (transform * vec4(curve.end, 1.0)).xyz;
 
-mat4 CreateRCCMatrix(Ray ray)
-{
-    vec3 e1;
-    vec3 e2;
-    vec3 e3 = normalize(ray.direction);
-    MakeOrthonormalBasis(e1, e2, e3);
-
-    mat4 rccInv = mat4(
-        vec4(e1, 0.0),
-        vec4(e2, 0.0),
-        vec4(e3, 0.0),
-        vec4(ray.origin, 1.0)
-    );
-    return inverse(rccInv);
-}
-
-Curve CreateRCCCurve(Curve curve, mat4 rccTransform)
-{
-    Curve rccCurve;
-    rccCurve.start = (rccTransform * vec4(curve.start, 1.0)).xyz;
-    rccCurve.controlPoint1 = (rccTransform * vec4(curve.controlPoint1, 1.0)).xyz;
-    rccCurve.controlPoint2 = (rccTransform * vec4(curve.controlPoint2, 1.0)).xyz;
-    rccCurve.end = (rccTransform * vec4(curve.end, 1.0)).xyz;
-
-    return rccCurve;
+    return transformedCurve;
 }
 
 float DistanceToCylinder(Curve curve, vec3 point)
@@ -195,7 +168,7 @@ bool RayCylinderIntersect(Ray ray, Cylinder cylinder)
     return false;
 }
 
-float Prhi(Curve curve, Ray ray)
+float Prhi(Ray ray, Curve curve)
 {
     float result = 0.0;
     const float curveRadius = 0.02; // TODO: Get from cpu
@@ -214,9 +187,11 @@ float Prhi(Curve curve, Ray ray)
         return result;
     }
 
+    // Start converging from either side
+
     // Convert curve to ray-centric coords
     mat4 rccTransform = CreateRCCMatrix(ray);
-    Curve rccCurve = CreateRCCCurve(curve, rccTransform);
+    Curve rccCurve = TransformCurve(curve, rccTransform);
 
     // Choose end point to start
     const vec3 rayDirection = vec3(0.0, 0.0, 1.0);
@@ -244,7 +219,7 @@ float Prhi(Curve curve, Ray ray)
             rci = RayConeIntersectRCC(cone);
 
             // Paper stops iterations on each instance of "abs(rci.dt) < 5e-5"
-            if (rci.realIntersection && abs(rci.dt) < 5e-5)
+            if (rci.isIntersection && abs(rci.dt) < 5e-5)
             {
                 // TODO: Add hit info
                 result = 1.0;
@@ -314,7 +289,7 @@ void main()
     ray.origin = gl_WorldRayOriginEXT;
     ray.direction = gl_WorldRayDirectionEXT;
 
-    float tHit = Prhi(curve, ray);
+    float tHit = Prhi(ray, curve);
 
     if (tHit > 0.0)
     {
