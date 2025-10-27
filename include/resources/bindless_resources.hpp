@@ -75,7 +75,6 @@ private:
     std::unique_ptr<Buffer> _geometryNodeBuffer;
     std::unique_ptr<Buffer> _blasInstanceBuffer;
 
-    vk::DescriptorPool _bindlessPool;
     vk::DescriptorSetLayout _bindlessLayout;
     vk::DescriptorSet _bindlessSet;
 

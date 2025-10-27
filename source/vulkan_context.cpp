@@ -110,10 +110,13 @@ VulkanContext::VulkanContext(const VulkanInitInfo& initInfo)
     InitializeDevice();
     InitializeCommandPool();
     InitializeVMA();
+    InitializeDescriptorPool();
 }
 
 VulkanContext::~VulkanContext()
 {
+    _device.destroy(_descriptorPool);
+
     if (_validationLayersEnabled)
     {
         _instance.destroyDebugUtilsMessengerEXT(_debugMessenger, nullptr, _dldi);
@@ -298,6 +301,31 @@ void VulkanContext::InitializeVMA()
     vmaAllocatorCreateInfo.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
 
     VkCheckResult(vmaCreateAllocator(&vmaAllocatorCreateInfo, &_vmaAllocator), "Failed creating VMA allocator!");
+}
+
+void VulkanContext::InitializeDescriptorPool()
+{
+    const std::vector<vk::DescriptorPoolSize> poolSizes = {
+        { vk::DescriptorType::eSampler, 1024 },
+        { vk::DescriptorType::eCombinedImageSampler, 1024 },
+        { vk::DescriptorType::eSampledImage, 1024 },
+        { vk::DescriptorType::eStorageImage, 1024 },
+        { vk::DescriptorType::eUniformTexelBuffer, 1024 },
+        { vk::DescriptorType::eStorageTexelBuffer, 1024 },
+        { vk::DescriptorType::eUniformBuffer, 1024 },
+        { vk::DescriptorType::eStorageBuffer, 1024 },
+        { vk::DescriptorType::eUniformBufferDynamic, 1024 },
+        { vk::DescriptorType::eStorageBufferDynamic, 1024 },
+        { vk::DescriptorType::eInputAttachment, 1024 },
+        { vk::DescriptorType::eAccelerationStructureKHR, 128 }
+    };
+
+    vk::DescriptorPoolCreateInfo createInfo {};
+    createInfo.poolSizeCount = poolSizes.size();
+    createInfo.pPoolSizes = poolSizes.data();
+    createInfo.maxSets = 256;
+    createInfo.flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet | vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind;
+    VkCheckResult(_device.createDescriptorPool(&createInfo, nullptr, &_descriptorPool), "Failed creating descriptor pool!");
 }
 
 bool VulkanContext::AreValidationLayersSupported() const

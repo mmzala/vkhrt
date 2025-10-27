@@ -48,7 +48,6 @@ Renderer::~Renderer()
     _vulkanContext->Device().destroyPipelineLayout(_pipelineLayout);
 
     _vulkanContext->Device().destroyDescriptorSetLayout(_descriptorSetLayout);
-    _vulkanContext->Device().destroyDescriptorPool(_descriptorPool);
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
     {
@@ -198,24 +197,8 @@ void Renderer::InitializeDescriptorSets()
     descriptorSetLayoutCreateInfo.pBindings = bindingLayouts.data();
     _descriptorSetLayout = _vulkanContext->Device().createDescriptorSetLayout(descriptorSetLayoutCreateInfo);
 
-    std::array<vk::DescriptorPoolSize, 2> poolSizes {};
-
-    vk::DescriptorPoolSize& imagePoolSize = poolSizes.at(0);
-    imagePoolSize.type = vk::DescriptorType::eStorageImage;
-    imagePoolSize.descriptorCount = 1;
-
-    vk::DescriptorPoolSize& accelerationStructureSize = poolSizes.at(1);
-    accelerationStructureSize.type = vk::DescriptorType::eAccelerationStructureKHR;
-    accelerationStructureSize.descriptorCount = 1;
-
-    vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo {};
-    descriptorPoolCreateInfo.maxSets = 1;
-    descriptorPoolCreateInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-    descriptorPoolCreateInfo.pPoolSizes = poolSizes.data();
-    _descriptorPool = _vulkanContext->Device().createDescriptorPool(descriptorPoolCreateInfo);
-
     vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo {};
-    descriptorSetAllocateInfo.descriptorPool = _descriptorPool;
+    descriptorSetAllocateInfo.descriptorPool = _vulkanContext->DescriptorPool();
     descriptorSetAllocateInfo.descriptorSetCount = 1;
     descriptorSetAllocateInfo.pSetLayouts = &_descriptorSetLayout;
     _descriptorSet = _vulkanContext->Device().allocateDescriptorSets(descriptorSetAllocateInfo).front();

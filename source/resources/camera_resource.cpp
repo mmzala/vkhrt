@@ -11,7 +11,6 @@ CameraResource::CameraResource(const std::shared_ptr<VulkanContext>& vulkanConte
 CameraResource::~CameraResource()
 {
     _vulkanContext->Device().destroyDescriptorSetLayout(_descriptorSetLayout);
-    _vulkanContext->Device().destroyDescriptorPool(_descriptorPool);
 }
 
 void CameraResource::Update(uint32_t frameIndex, const glm::mat4& viewInverse, const glm::mat4& projInverse)
@@ -58,22 +57,12 @@ void CameraResource::CreateDescriptorSetLayout()
 
 void CameraResource::CreateDescriptorSets()
 {
-    vk::DescriptorPoolSize cameraSize {};
-    cameraSize.type = vk::DescriptorType::eUniformBuffer;
-    cameraSize.descriptorCount = 1;
-
-    vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo {};
-    descriptorPoolCreateInfo.maxSets = _descriptorSets.size();
-    descriptorPoolCreateInfo.poolSizeCount = 1;
-    descriptorPoolCreateInfo.pPoolSizes = &cameraSize;
-    _descriptorPool = _vulkanContext->Device().createDescriptorPool(descriptorPoolCreateInfo);
-
     std::array<vk::DescriptorSetLayout, MAX_FRAMES_IN_FLIGHT> layouts {};
     std::for_each(layouts.begin(), layouts.end(), [this](auto& l)
         { l = _descriptorSetLayout; });
 
     vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo {};
-    descriptorSetAllocateInfo.descriptorPool = _descriptorPool;
+    descriptorSetAllocateInfo.descriptorPool = _vulkanContext->DescriptorPool();
     descriptorSetAllocateInfo.descriptorSetCount = _descriptorSets.size();
     descriptorSetAllocateInfo.pSetLayouts = layouts.data();
     VkCheckResult(_vulkanContext->Device().allocateDescriptorSets(&descriptorSetAllocateInfo, _descriptorSets.data()), "Failed to allocate camera descriptor sets");
