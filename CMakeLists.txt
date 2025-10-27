@@ -37,6 +37,7 @@ target_link_libraries(VKHRT
 		PUBLIC glm::glm
 		PUBLIC Assimp
 		PUBLIC STB
+		PUBLIC ImGui
 )
 
 # Add sources and includes

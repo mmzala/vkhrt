@@ -107,3 +107,17 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(stb)
 target_include_directories(STB INTERFACE ${stb_SOURCE_DIR})
+
+# ImGui
+
+add_library(ImGui INTERFACE)
+FetchContent_Declare(
+        imgui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.92.4
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(imgui)
+target_include_directories(ImGui INTERFACE ${imgui_SOURCE_DIR})
