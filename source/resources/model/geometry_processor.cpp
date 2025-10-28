@@ -80,13 +80,13 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
         // Detect if the next and previous curve segments are on the same hair strand.
         // If they are, use them, if they aren't reuse the current line to generate
         // the curve to avoid generation based on unrelated hair strands
-        uint32_t prevIndex = lines[i - 1].end == lines[i].start ? i - 1 : i;
-        uint32_t nextIndex = lines[i].end == lines[i + 1].start ? i + 1 : i;
+        uint32_t prevIndex = linesToProcess[i - 1].end == linesToProcess[i].start ? i - 1 : i;
+        uint32_t nextIndex = linesToProcess[i].end == linesToProcess[i + 1].start ? i + 1 : i;
 
-        glm::vec3 p0 = lines[prevIndex].start;
-        glm::vec3 p1 = lines[i].start;
-        glm::vec3 p2 = lines[i].end;
-        glm::vec3 p3 = lines[nextIndex].end;
+        glm::vec3 p0 = linesToProcess[prevIndex].start;
+        glm::vec3 p1 = linesToProcess[i].start;
+        glm::vec3 p2 = linesToProcess[i].end;
+        glm::vec3 p3 = linesToProcess[nextIndex].end;
 
         Curve& curve = curves.emplace_back();
         curve.start = p1;
