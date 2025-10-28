@@ -28,6 +28,7 @@ public:
 
     [[nodiscard]] const SwapChain& GetSwapChain() const { return *_swapChain; }
     [[nodiscard]] vk::RenderPass GetImGuiRenderPass() const { return _imguiRenderPass; }
+    [[nodiscard]] const std::vector<std::shared_ptr<Model>>& GetModels() const { return _models; }
 
 private:
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame);

@@ -10,6 +10,7 @@
 #include "timer.hpp"
 #include "vulkan_context.hpp"
 #include "imgui_backend.hpp"
+#include "editor.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -72,8 +73,9 @@ Application::Application()
     _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
-    _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
-    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, *_window, *_renderer);
+    _renderer = std::make_shared<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, _renderer, *_window);
+    _editor = std::make_unique<Editor>(*this, _vulkanContext, _renderer);
 
     // Hide mouse to be able to rotate infinitely
     SDL_SetWindowRelativeMouseMode(_window, true);
@@ -119,5 +121,9 @@ void Application::MainLoopOnce()
     }
 
     _flyCamera->Update(deltaTime);
+    _editor->Update();
     _renderer->Render();
+
+    DeltaMS frameTimeMS = _timer->GetElapsed();
+    _frameTime = frameTimeMS.count();
 }

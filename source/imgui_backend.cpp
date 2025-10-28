@@ -6,7 +6,7 @@
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 
-ImGuiBackend::ImGuiBackend(const std::shared_ptr<VulkanContext>& vulkanContext, SDL_Window& sdlWindow, const Renderer& renderer)
+ImGuiBackend::ImGuiBackend(const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<Renderer>& renderer, SDL_Window& sdlWindow)
 {
     // Context
     IMGUI_CHECKVERSION();
@@ -29,14 +29,14 @@ ImGuiBackend::ImGuiBackend(const std::shared_ptr<VulkanContext>& vulkanContext, 
     initInfo.Queue = vulkanContext->GraphicsQueue();
     initInfo.DescriptorPool = vulkanContext->DescriptorPool();
     initInfo.MinImageCount = 2;
-    initInfo.ImageCount = renderer.GetSwapChain().GetImageCount();
+    initInfo.ImageCount = renderer->GetSwapChain().GetImageCount();
     initInfo.CheckVkResultFn = VkCheckResult;
     initInfo.UseDynamicRendering = false;
     initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO_KHR;
     initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.colorAttachmentCount = 1;
-    VkFormat swapchainFormat = static_cast<VkFormat>(renderer.GetSwapChain().GetFormat());
+    VkFormat swapchainFormat = static_cast<VkFormat>(renderer->GetSwapChain().GetFormat());
     initInfo.PipelineInfoMain.PipelineRenderingCreateInfo.pColorAttachmentFormats = &swapchainFormat;
-    initInfo.PipelineInfoMain.RenderPass = renderer.GetImGuiRenderPass();
+    initInfo.PipelineInfoMain.RenderPass = renderer->GetImGuiRenderPass();
     ImGui_ImplVulkan_Init(&initInfo);
 }
 
