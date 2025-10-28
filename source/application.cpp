@@ -9,6 +9,7 @@
 #include "renderer.hpp"
 #include "timer.hpp"
 #include "vulkan_context.hpp"
+#include "imgui_backend.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>
@@ -72,6 +73,7 @@ Application::Application()
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
     _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, *_window, _renderer->GetSwapChain());
 
     // Hide mouse to be able to rotate infinitely
     SDL_SetWindowRelativeMouseMode(_window, true);

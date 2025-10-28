@@ -6,6 +6,7 @@ class VulkanContext;
 class Renderer;
 class Input;
 class FlyCamera;
+class ImGuiBackend;
 class Timer;
 struct SDL_Window;
 
@@ -27,6 +28,7 @@ private:
     std::shared_ptr<FlyCamera> _flyCamera;
     std::shared_ptr<VulkanContext> _vulkanContext;
     std::unique_ptr<Renderer> _renderer;
+    std::unique_ptr<ImGuiBackend> _imguiBackend;
 
     SDL_Window* _window = nullptr;
     bool _exitRequested = false;

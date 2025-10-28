@@ -26,6 +26,8 @@ public:
 
     void Render();
 
+    [[nodiscard]] const SwapChain& GetSwapChain() const { return *_swapChain; }
+
 private:
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame);
     void UpdateCameraResource(uint32_t currentResourceFrame);
