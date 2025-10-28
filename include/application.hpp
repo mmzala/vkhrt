@@ -7,7 +7,7 @@ class Renderer;
 class Input;
 class FlyCamera;
 class Timer;
-class SDL_Window;
+struct SDL_Window;
 
 class Application
 {
