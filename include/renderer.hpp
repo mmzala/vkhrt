@@ -26,8 +26,15 @@ public:
 
     void Render();
 
+    [[nodiscard]] const SwapChain& GetSwapChain() const { return *_swapChain; }
+    [[nodiscard]] vk::RenderPass GetImGuiRenderPass() const { return _imguiRenderPass; }
+    [[nodiscard]] const std::vector<std::shared_ptr<Model>>& GetModels() const { return _models; }
+
 private:
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame);
+    void RecordRayTracingCommands(const vk::CommandBuffer& commandBuffer, uint32_t currentResourceFrame);
+    void RecordImGuiCommands(const vk::CommandBuffer& commandBuffer);
+
     void UpdateCameraResource(uint32_t currentResourceFrame);
 
     void InitializeCommandBuffers();
@@ -35,8 +42,12 @@ private:
     void InitializeRenderTarget();
 
     void InitializeDescriptorSets();
-    void InitializePipeline();
+    void InitializeRayTracingPipeline();
     void InitializeShaderBindingTable(const vk::RayTracingPipelineCreateInfoKHR& pipelineInfo);
+
+    void InitializeImGuiPipeline();
+    void InitializeImGuiRenderPass();
+    void InitializeImGuiFrameBuffer();
 
     void InitializeBLAS();
 
@@ -57,7 +68,6 @@ private:
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
 
-    vk::DescriptorPool _descriptorPool;
     vk::DescriptorSetLayout _descriptorSetLayout;
     vk::DescriptorSet _descriptorSet;
 
@@ -73,6 +83,9 @@ private:
 
     vk::PipelineLayout _pipelineLayout;
     vk::Pipeline _pipeline;
+
+    vk::RenderPass _imguiRenderPass;
+    vk::Framebuffer _imguiFramebuffer;
 
     uint32_t _windowWidth = 0;
     uint32_t _windowHeight = 0;

@@ -19,6 +19,11 @@ void VkCheckResult(VkResult result, std::string_view message)
     VkCheckResult(static_cast<vk::Result>(result), message);
 }
 
+void VkCheckResult(VkResult result)
+{
+    VkCheckResult(result, {});
+}
+
 bool VkHasStencilComponent(vk::Format format)
 {
     return format == vk::Format::eD32SfloatS8Uint || format == vk::Format::eD24UnormS8Uint;

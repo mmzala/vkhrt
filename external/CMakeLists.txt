@@ -107,3 +107,27 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(stb)
 target_include_directories(STB INTERFACE ${stb_SOURCE_DIR})
+
+# ImGui
+
+FetchContent_Declare(
+        ImGui
+        GIT_REPOSITORY https://github.com/ocornut/imgui.git
+        GIT_TAG v1.92.4
+        GIT_SHALLOW TRUE
+        GIT_PROGRESS TRUE
+)
+
+FetchContent_MakeAvailable(ImGui)
+
+file(GLOB imgui_sources CONFIGURE_DEPENDS "${imgui_SOURCE_DIR}/*.cpp")
+file(GLOB imgui_headers CONFIGURE_DEPENDS "${imgui_SOURCE_DIR}/*.h")
+
+set(imgui_files ${imgui_sources} ${imgui_headers}
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+)
+
+add_library(ImGui STATIC ${imgui_files})
+target_link_libraries(ImGui PUBLIC VulkanAPI SDL3::SDL3-static)
+target_include_directories(ImGui PUBLIC ${imgui_SOURCE_DIR})

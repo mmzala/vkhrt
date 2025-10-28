@@ -4,7 +4,9 @@
 // This definition fixes the issues and does not change the final build output
 #define SDL_DISABLE_ANALYZE_MACROS
 
+#include "editor.hpp"
 #include "fly_camera.hpp"
+#include "imgui_backend.hpp"
 #include "input/input.hpp"
 #include "renderer.hpp"
 #include "timer.hpp"
@@ -71,7 +73,9 @@ Application::Application()
     _flyCamera = std::make_shared<FlyCamera>(flyCameraCreation, _input);
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
-    _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+    _renderer = std::make_shared<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
+    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, _renderer, *_window);
+    _editor = std::make_unique<Editor>(*this, _vulkanContext, _renderer);
 
     // Hide mouse to be able to rotate infinitely
     SDL_SetWindowRelativeMouseMode(_window, true);
@@ -100,6 +104,7 @@ void Application::MainLoopOnce()
     _timer->Reset();
     const float deltaTime = deltaMS.count();
 
+    _imguiBackend->NewFrame();
     _input->Update();
 
     SDL_Event event;
@@ -112,8 +117,13 @@ void Application::MainLoopOnce()
         }
 
         _input->UpdateEvent(event);
+        _imguiBackend->UpdateEvent(event);
     }
 
     _flyCamera->Update(deltaTime);
+    _editor->Update();
     _renderer->Render();
+
+    DeltaMS frameTimeMS = _timer->GetElapsed();
+    _frameTime = frameTimeMS.count();
 }

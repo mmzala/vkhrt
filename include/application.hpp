@@ -6,8 +6,10 @@ class VulkanContext;
 class Renderer;
 class Input;
 class FlyCamera;
+class ImGuiBackend;
+class Editor;
 class Timer;
-class SDL_Window;
+struct SDL_Window;
 
 class Application
 {
@@ -18,6 +20,7 @@ public:
     NON_MOVABLE(Application);
 
     int Run();
+    [[nodiscard]] float GetFrameTime() const { return _frameTime; }
 
 private:
     void MainLoopOnce();
@@ -26,8 +29,11 @@ private:
     std::shared_ptr<Input> _input;
     std::shared_ptr<FlyCamera> _flyCamera;
     std::shared_ptr<VulkanContext> _vulkanContext;
-    std::unique_ptr<Renderer> _renderer;
+    std::shared_ptr<Renderer> _renderer;
+    std::unique_ptr<ImGuiBackend> _imguiBackend;
+    std::unique_ptr<Editor> _editor;
 
     SDL_Window* _window = nullptr;
     bool _exitRequested = false;
+    float _frameTime {};
 };

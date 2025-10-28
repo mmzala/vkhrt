@@ -26,7 +26,6 @@ private:
 
     std::shared_ptr<VulkanContext> _vulkanContext;
     vk::DescriptorSetLayout _descriptorSetLayout;
-    vk::DescriptorPool _descriptorPool; // TODO: Create pool in vulkan context
     std::array<vk::DescriptorSet, MAX_FRAMES_IN_FLIGHT> _descriptorSets;
     std::array<std::unique_ptr<Buffer>, MAX_FRAMES_IN_FLIGHT> _buffers;
 };

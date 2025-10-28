@@ -22,7 +22,10 @@ public:
 
     [[nodiscard]] vk::SwapchainKHR GetSwapChain() const { return _swapChain; }
     [[nodiscard]] vk::Image GetImage(uint32_t index) const { return _images[index]; }
+    [[nodiscard]] vk::ImageView GetImageView(uint32_t index) const { return _imageViews[index]; }
     [[nodiscard]] vk::Format GetFormat() const { return _format; }
+    [[nodiscard]] uint32_t GetImageCount() const { return _images.size(); }
+    [[nodiscard]] vk::Extent2D GetExtent() const { return _extent; }
 
     static SupportDetails QuerySupport(vk::PhysicalDevice device, vk::SurfaceKHR surface);
 

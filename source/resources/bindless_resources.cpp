@@ -64,7 +64,6 @@ BindlessResources::BindlessResources(const std::shared_ptr<VulkanContext>& vulka
 BindlessResources::~BindlessResources()
 {
     _vulkanContext->Device().destroy(_bindlessLayout);
-    _vulkanContext->Device().destroy(_bindlessPool);
 }
 
 void BindlessResources::UpdateDescriptorSet()
@@ -234,19 +233,6 @@ void BindlessResources::UploadBLASInstances()
 
 void BindlessResources::InitializeSet()
 {
-    std::array<vk::DescriptorPoolSize, 3> poolSizes {
-        vk::DescriptorPoolSize { vk::DescriptorType::eCombinedImageSampler, MAX_RESOURCES },
-        vk::DescriptorPoolSize { vk::DescriptorType::eUniformBuffer, 1 },
-        vk::DescriptorPoolSize { vk::DescriptorType::eStorageBuffer, 2 }, // GeometryNode and BLASInstance
-    };
-
-    vk::DescriptorPoolCreateInfo poolCreateInfo {};
-    poolCreateInfo.flags = vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind;
-    poolCreateInfo.maxSets = 1;
-    poolCreateInfo.poolSizeCount = poolSizes.size();
-    poolCreateInfo.pPoolSizes = poolSizes.data();
-    VkCheckResult(_vulkanContext->Device().createDescriptorPool(&poolCreateInfo, nullptr, &_bindlessPool), "Failed creating bindless pool");
-
     std::vector<vk::DescriptorSetLayoutBinding> bindings(4);
 
     vk::DescriptorSetLayoutBinding& combinedImageSampler = bindings[0];
@@ -294,7 +280,7 @@ void BindlessResources::InitializeSet()
     _bindlessLayout = _vulkanContext->Device().createDescriptorSetLayout(layoutCreateInfo);
 
     vk::DescriptorSetAllocateInfo allocInfo {};
-    allocInfo.descriptorPool = _bindlessPool;
+    allocInfo.descriptorPool = _vulkanContext->DescriptorPool();
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &_bindlessLayout;
     VkCheckResult(_vulkanContext->Device().allocateDescriptorSets(&allocInfo, &_bindlessSet), "Failed creating bindless descriptor set");

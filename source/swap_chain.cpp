@@ -82,6 +82,8 @@ void SwapChain::InitializeSwapChain(glm::uvec2 screenSize)
     _images = _vulkanContext->Device().getSwapchainImagesKHR(_swapChain);
     _format = surfaceFormat.format;
     _extent = extent;
+
+    InitializeImageViews();
 }
 
 void SwapChain::CleanUp()

@@ -33,6 +33,7 @@ public:
     NON_MOVABLE(VulkanContext);
 
     [[nodiscard]] vk::detail::DispatchLoaderDynamic Dldi() const { return _dldi; }
+    [[nodiscard]] vk::Instance Instance() const { return _instance; }
     [[nodiscard]] vk::PhysicalDevice PhysicalDevice() const { return _physicalDevice; }
     [[nodiscard]] vk::Device Device() const { return _device; }
     [[nodiscard]] vk::Queue GraphicsQueue() const { return _graphicsQueue; }
@@ -41,6 +42,7 @@ public:
     [[nodiscard]] vk::CommandPool CommandPool() const { return _commandPool; }
     [[nodiscard]] VmaAllocator MemoryAllocator() const { return _vmaAllocator; }
     [[nodiscard]] const QueueFamilyIndices& QueueFamilies() const { return _queueFamilyIndices; }
+    [[nodiscard]] vk::DescriptorPool DescriptorPool() const { return _descriptorPool; }
 
     [[nodiscard]] vk::PhysicalDeviceRayTracingPipelinePropertiesKHR RayTracingPipelineProperties() const;
     [[nodiscard]] uint64_t GetBufferDeviceAddress(vk::Buffer buffer) const;
@@ -55,6 +57,7 @@ private:
     vk::CommandPool _commandPool;
     QueueFamilyIndices _queueFamilyIndices;
     VmaAllocator _vmaAllocator;
+    vk::DescriptorPool _descriptorPool;
 
     vk::SurfaceKHR _surface;
 
@@ -86,6 +89,7 @@ private:
     void InitializeDevice();
     void InitializeCommandPool();
     void InitializeVMA();
+    void InitializeDescriptorPool();
     [[nodiscard]] bool AreValidationLayersSupported() const;
     [[nodiscard]] std::vector<const char*> GetRequiredInstanceExtensions(const VulkanInitInfo& initInfo) const;
     [[nodiscard]] uint32_t RateDeviceSuitability(const vk::PhysicalDevice& deviceToRate) const;
