@@ -408,3 +408,5 @@ compile_commands.json
 memory-vis/
 
 assets/
+
+imgui.ini
