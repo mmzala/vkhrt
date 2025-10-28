@@ -13,6 +13,7 @@ struct ImageLayoutTransitionState
 
 void VkCheckResult(vk::Result result, std::string_view message);
 void VkCheckResult(VkResult result, std::string_view message);
+void VkCheckResult(VkResult result);
 
 [[nodiscard]] bool VkHasStencilComponent(vk::Format format);
 [[nodiscard]] ImageLayoutTransitionState VkGetImageLayoutTransitionSourceState(vk::ImageLayout sourceLayout);

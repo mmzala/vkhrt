@@ -10,6 +10,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <backends/imgui_impl_vulkan.h>
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<FlyCamera>& flyCamera)
     : _vulkanContext(vulkanContext)
@@ -39,11 +40,15 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _bindlessResources->UpdateDescriptorSet();
 
     InitializeDescriptorSets();
-    InitializePipeline();
+    InitializeRayTracingPipeline();
+    InitializeImGuiPipeline();
 }
 
 Renderer::~Renderer()
 {
+    _vulkanContext->Device().destroyRenderPass(_imguiRenderPass);
+    _vulkanContext->Device().destroyFramebuffer(_imguiFramebuffer);
+
     _vulkanContext->Device().destroyPipeline(_pipeline);
     _vulkanContext->Device().destroyPipelineLayout(_pipelineLayout);
 
@@ -112,6 +117,26 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
         vk::ImageLayout::eUndefined, vk::ImageLayout::eGeneral);
 
+    RecordRayTracingCommands(commandBuffer, currentResourceFrame);
+
+    VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
+            vk::ImageLayout::eGeneral, vk::ImageLayout::eColorAttachmentOptimal);
+
+    RecordImGuiCommands(commandBuffer);
+
+    // No need to transition _renderTarget, as ImGui render pass does it for us
+    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
+            vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+
+    vk::Extent2D extent = { _windowWidth, _windowHeight };
+    VkCopyImageToImage(commandBuffer, _renderTarget->image, _swapChain->GetImage(swapChainImageIndex), extent, extent);
+
+    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
+        vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR);
+}
+
+void Renderer::RecordRayTracingCommands(const vk::CommandBuffer& commandBuffer, uint32_t currentResourceFrame)
+{
     commandBuffer.bindPipeline(vk::PipelineBindPoint::eRayTracingKHR, _pipeline);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
@@ -119,17 +144,27 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
+}
 
-    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
-        vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
-    VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
-        vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferSrcOptimal);
+void Renderer::RecordImGuiCommands(const vk::CommandBuffer& commandBuffer)
+{
+    vk::ClearValue clearColor = vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f);
 
-    vk::Extent2D extent = { _windowWidth, _windowHeight };
-    VkCopyImageToImage(commandBuffer, _renderTarget->image, _swapChain->GetImage(swapChainImageIndex), extent, extent);
+    vk::RenderPassBeginInfo rpInfo = {};
+    rpInfo.renderPass = _imguiRenderPass;
+    rpInfo.framebuffer = _imguiFramebuffer;
+    rpInfo.renderArea.offset = vk::Offset2D{0, 0};
+    rpInfo.renderArea.extent = _swapChain->GetExtent();
+    rpInfo.clearValueCount = 1;
+    rpInfo.pClearValues = &clearColor;
 
-    VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
-        vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::ePresentSrcKHR);
+    // Begin the render pass
+    commandBuffer.beginRenderPass(rpInfo, vk::SubpassContents::eInline);
+
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
+
+    commandBuffer.endRenderPass();
 }
 
 void Renderer::UpdateCameraResource(uint32_t currentResourceFrame)
@@ -171,7 +206,7 @@ void Renderer::InitializeRenderTarget()
     imageCreation.SetName("Render Target")
         .SetSize(_windowWidth, _windowHeight)
         .SetFormat(_swapChain->GetFormat())
-        .SetUsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eStorage);
+        .SetUsageFlags(vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eStorage | vk::ImageUsageFlagBits::eColorAttachment);
 
     _renderTarget = std::make_unique<Image>(imageCreation, _vulkanContext);
 }
@@ -233,7 +268,7 @@ void Renderer::InitializeDescriptorSets()
     _vulkanContext->Device().updateDescriptorSets(static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
-void Renderer::InitializePipeline()
+void Renderer::InitializeRayTracingPipeline()
 {
     vk::ShaderModule raygenModule = Shader::CreateShaderModule("shaders/bin/ray_gen.rgen.spv", _vulkanContext->Device());
     vk::ShaderModule missModule = Shader::CreateShaderModule("shaders/bin/miss.rmiss.spv", _vulkanContext->Device());
@@ -386,6 +421,65 @@ void Renderer::InitializeShaderBindingTable(const vk::RayTracingPipelineCreateIn
     _hitAddressRegion.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_hitSBT->buffer);
     _hitAddressRegion.stride = handleSizeAligned;
     _hitAddressRegion.size = handleSizeAligned * 2;
+}
+
+void Renderer::InitializeImGuiPipeline()
+{
+    InitializeImGuiRenderPass();
+    InitializeImGuiFrameBuffer();
+}
+
+void Renderer::InitializeImGuiRenderPass()
+{
+    vk::AttachmentDescription colorAttachment = {};
+    colorAttachment.format = _renderTarget->format;
+    colorAttachment.samples = vk::SampleCountFlagBits::e1;
+    colorAttachment.loadOp = vk::AttachmentLoadOp::eLoad;
+    colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+    colorAttachment.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+    colorAttachment.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+    colorAttachment.initialLayout = vk::ImageLayout::eColorAttachmentOptimal;
+    colorAttachment.finalLayout = vk::ImageLayout::eTransferSrcOptimal;
+
+    vk::AttachmentReference colorAttachmentRef = {};
+    colorAttachmentRef.attachment = 0;
+    colorAttachmentRef.layout = vk::ImageLayout::eColorAttachmentOptimal;
+
+    vk::SubpassDescription subpass = {};
+    subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorAttachmentRef;
+
+    vk::SubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependency.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    dependency.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+    dependency.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead;
+
+    vk::RenderPassCreateInfo renderPassInfo = {};
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
+    renderPassInfo.subpassCount = 1;
+    renderPassInfo.pSubpasses = &subpass;
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &dependency;
+
+    _imguiRenderPass = _vulkanContext->Device().createRenderPass(renderPassInfo);
+}
+
+void Renderer::InitializeImGuiFrameBuffer()
+{
+    vk::FramebufferCreateInfo framebufferInfo = {};
+    framebufferInfo.renderPass = _imguiRenderPass;
+    framebufferInfo.attachmentCount = 1;
+    framebufferInfo.pAttachments = &_renderTarget->view;
+    framebufferInfo.width = _swapChain->GetExtent().width;
+    framebufferInfo.height = _swapChain->GetExtent().height;
+    framebufferInfo.layers = 1;
+
+    _imguiFramebuffer = _vulkanContext->Device().createFramebuffer(framebufferInfo);
 }
 
 BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const Mesh& mesh, const std::shared_ptr<VulkanContext>& vulkanContext)

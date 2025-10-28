@@ -27,9 +27,13 @@ public:
     void Render();
 
     [[nodiscard]] const SwapChain& GetSwapChain() const { return *_swapChain; }
+    [[nodiscard]] vk::RenderPass GetImGuiRenderPass() const { return _imguiRenderPass; }
 
 private:
     void RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t swapChainImageIndex, uint32_t currentResourceFrame);
+    void RecordRayTracingCommands(const vk::CommandBuffer& commandBuffer, uint32_t currentResourceFrame);
+    void RecordImGuiCommands(const vk::CommandBuffer& commandBuffer);
+
     void UpdateCameraResource(uint32_t currentResourceFrame);
 
     void InitializeCommandBuffers();
@@ -37,8 +41,12 @@ private:
     void InitializeRenderTarget();
 
     void InitializeDescriptorSets();
-    void InitializePipeline();
+    void InitializeRayTracingPipeline();
     void InitializeShaderBindingTable(const vk::RayTracingPipelineCreateInfoKHR& pipelineInfo);
+
+    void InitializeImGuiPipeline();
+    void InitializeImGuiRenderPass();
+    void InitializeImGuiFrameBuffer();
 
     void InitializeBLAS();
 
@@ -74,6 +82,9 @@ private:
 
     vk::PipelineLayout _pipelineLayout;
     vk::Pipeline _pipeline;
+
+    vk::RenderPass _imguiRenderPass;
+    vk::Framebuffer _imguiFramebuffer;
 
     uint32_t _windowWidth = 0;
     uint32_t _windowHeight = 0;

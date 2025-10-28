@@ -73,7 +73,7 @@ Application::Application()
 
     _vulkanContext = std::make_shared<VulkanContext>(vulkanInfo);
     _renderer = std::make_unique<Renderer>(vulkanInfo, _vulkanContext, _flyCamera);
-    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, *_window, _renderer->GetSwapChain());
+    _imguiBackend = std::make_unique<ImGuiBackend>(_vulkanContext, *_window, *_renderer);
 
     // Hide mouse to be able to rotate infinitely
     SDL_SetWindowRelativeMouseMode(_window, true);
@@ -102,6 +102,7 @@ void Application::MainLoopOnce()
     _timer->Reset();
     const float deltaTime = deltaMS.count();
 
+    _imguiBackend->NewFrame();
     _input->Update();
 
     SDL_Event event;
@@ -114,6 +115,7 @@ void Application::MainLoopOnce()
         }
 
         _input->UpdateEvent(event);
+        _imguiBackend->UpdateEvent(event);
     }
 
     _flyCamera->Update(deltaTime);
