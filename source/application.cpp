@@ -4,13 +4,13 @@
 // This definition fixes the issues and does not change the final build output
 #define SDL_DISABLE_ANALYZE_MACROS
 
+#include "editor.hpp"
 #include "fly_camera.hpp"
+#include "imgui_backend.hpp"
 #include "input/input.hpp"
 #include "renderer.hpp"
 #include "timer.hpp"
 #include "vulkan_context.hpp"
-#include "imgui_backend.hpp"
-#include "editor.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <spdlog/spdlog.h>

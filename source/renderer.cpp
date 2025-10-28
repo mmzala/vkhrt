@@ -7,10 +7,10 @@
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
 #include "vulkan_context.hpp"
+#include <backends/imgui_impl_vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
-#include <backends/imgui_impl_vulkan.h>
 
 Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<FlyCamera>& flyCamera)
     : _vulkanContext(vulkanContext)
@@ -120,13 +120,13 @@ void Renderer::RecordCommands(const vk::CommandBuffer& commandBuffer, uint32_t s
     RecordRayTracingCommands(commandBuffer, currentResourceFrame);
 
     VkTransitionImageLayout(commandBuffer, _renderTarget->image, _renderTarget->format,
-            vk::ImageLayout::eGeneral, vk::ImageLayout::eColorAttachmentOptimal);
+        vk::ImageLayout::eGeneral, vk::ImageLayout::eColorAttachmentOptimal);
 
     RecordImGuiCommands(commandBuffer);
 
     // No need to transition _renderTarget, as ImGui render pass does it for us
     VkTransitionImageLayout(commandBuffer, _swapChain->GetImage(swapChainImageIndex), _swapChain->GetFormat(),
-            vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
+        vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal);
 
     vk::Extent2D extent = { _windowWidth, _windowHeight };
     VkCopyImageToImage(commandBuffer, _renderTarget->image, _swapChain->GetImage(swapChainImageIndex), extent, extent);
@@ -153,7 +153,7 @@ void Renderer::RecordImGuiCommands(const vk::CommandBuffer& commandBuffer)
     vk::RenderPassBeginInfo rpInfo = {};
     rpInfo.renderPass = _imguiRenderPass;
     rpInfo.framebuffer = _imguiFramebuffer;
-    rpInfo.renderArea.offset = vk::Offset2D{0, 0};
+    rpInfo.renderArea.offset = vk::Offset2D { 0, 0 };
     rpInfo.renderArea.extent = _swapChain->GetExtent();
     rpInfo.clearValueCount = 1;
     rpInfo.pClearValues = &clearColor;

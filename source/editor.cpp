@@ -5,7 +5,9 @@
 #include <imgui.h>
 
 Editor::Editor(const Application& application, const std::shared_ptr<VulkanContext>& vulkanContext, const std::shared_ptr<Renderer>& renderer)
-    : _application(application), _vulkanContext(vulkanContext), _renderer(renderer)
+    : _application(application)
+    , _vulkanContext(vulkanContext)
+    , _renderer(renderer)
 {
     _sceneInformation = {};
     for (const std::shared_ptr<Model>& model : _renderer->GetModels())

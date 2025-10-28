@@ -1,8 +1,8 @@
 #include "imgui_backend.hpp"
 #include "renderer.hpp"
-#include "vulkan_context.hpp"
 #include "swap_chain.hpp"
 #include "vk_common.hpp"
+#include "vulkan_context.hpp"
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 
@@ -12,7 +12,7 @@ ImGuiBackend::ImGuiBackend(const std::shared_ptr<VulkanContext>& vulkanContext, 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
     ImGui::StyleColorsDark();
