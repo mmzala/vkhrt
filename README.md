@@ -39,3 +39,4 @@ All of the build files can be found in the root directory inside the `build` fol
 - [assimp](https://github.com/assimp/assimp)
 - [stb](https://github.com/nothings/stb)
 - [spdlog](https://github.com/gabime/spdlog)
+- [ImGui](https://github.com/ocornut/imgui)
