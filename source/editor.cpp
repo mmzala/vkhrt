@@ -20,8 +20,10 @@ void Editor::Update()
     static constexpr float INDENT_SPACING = 20.0f;
 
     ImGui::Begin("Debug Information", nullptr, ImGuiWindowFlags_NoDecoration);
-    ImGui::SetWindowSize(ImVec2(200.0f, 300.0f));
+    ImGui::SetWindowSize(ImVec2(250.0f, 325.0f));
 
+    vk::PhysicalDeviceProperties physicalDeviceProperties = _vulkanContext->PhysicalDevice().getProperties();
+    ImGui::Text("GPU: %s", physicalDeviceProperties.deviceName.data());
     ImGui::Text("Frame Time: %fms", _application.GetFrameTime());
 
     ImGui::Separator();
