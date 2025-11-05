@@ -10,6 +10,7 @@
 #include "primitives.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Curves { Curve curves[]; };
+hitAttributeEXT vec3 attribNormal;
 
 float Prhi(Ray ray, Curve curve)
 {
@@ -43,7 +44,7 @@ float Prhi(Ray ray, Curve curve)
 
     for (uint side = 0; side < 2; ++side)
     {
-        const uint maxIterations = 5;
+        const uint maxIterations = 8;
         float t = tStart;
 
         RayConeIntersection rci;
@@ -64,8 +65,15 @@ float Prhi(Ray ray, Curve curve)
             // Paper stops iterations on each instance of "abs(rci.dt) < 5e-5"
             if (rci.isIntersection && abs(rci.dt) < 5e-5)
             {
-                // TODO: Add hit info
-                result = 1.0;
+                // Extract distance along ray
+                rci.s += cone.center.z;
+                result = rci.s;
+
+                // Extract normal
+                vec3 hitPosition = ray.origin + result * ray.direction;
+                vec3 curvePosition = SampleCurvePoint(curve, t);
+                attribNormal = normalize(hitPosition - curvePosition);
+
                 break;
             }
 
@@ -107,13 +115,13 @@ float Prhi(Ray ray, Curve curve)
         }
 
         // Try convernging from other side if we don't get a hit from the closest directional side
-        if (result != 1.0)
+        if (result > 0.0)
         {
-            tStart = 1.0 - tStart;
+            break;
         }
         else
         {
-            break;
+            tStart = 1.0 - tStart;
         }
     }
 
