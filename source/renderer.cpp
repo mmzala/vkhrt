@@ -29,6 +29,8 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
 
     const std::vector<std::string> scene = {
         "assets/claire/Claire_HairMain_less_strands.gltf",
+        "assets/claire/Claire_PonyTail.gltf",
+        "assets/claire/hairtie/hairtie.gltf",
     };
     for (const auto& modelPath : scene)
     {
