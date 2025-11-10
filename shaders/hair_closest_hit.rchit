@@ -13,7 +13,7 @@ layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Ver
 layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
-hitAttributeEXT vec2 attribs;
+hitAttributeEXT vec3 attribNormal;
 
 vec3 colors[6] = vec3[](vec3(1.0, 0.0, 0.3), vec3(0.8, 0.2, 0.3), vec3(0.6, 0.4, 0.3), vec3(0.4, 0.6, 0.3), vec3(0.2, 0.8, 0.3), vec3(0.0, 1.0, 0.3));
 
@@ -23,8 +23,17 @@ void main()
     GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
     Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
 
-    int index = gl_PrimitiveID % 6;
-    vec3 color = colors[index];
+    vec3 normal = attribNormal;
+
+    vec3 lightColor = vec3(0.4, 0.2, 0.1);
+    vec3 lightDirection = vec3(0.0, -1.0, 0.0);
+    vec3 ambientColor = vec3(0.3);
+
+    vec3 color = abs(dot(normal, lightDirection)) * lightColor;
+    color += ambientColor;
+
+    // int index = gl_PrimitiveID % 6;
+    // vec3 color = colors[index];
 
     payload.hitValue = color;
 }
