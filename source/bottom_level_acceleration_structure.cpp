@@ -19,7 +19,8 @@ BottomLevelAccelerationStructure::~BottomLevelAccelerationStructure()
 }
 
 BottomLevelAccelerationStructure::BottomLevelAccelerationStructure(BottomLevelAccelerationStructure&& other) noexcept
-    : _transform(other._transform)
+    : _type(other._type)
+    , _transform(other._transform)
     , _vulkanContext(other._vulkanContext)
 {
     _vkStructure = other._vkStructure;
