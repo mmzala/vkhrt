@@ -26,6 +26,7 @@ float Prhi(Ray ray, Curve curve)
     cylinder.p1 = curve.end;
     cylinder.radius = rmax;
 
+    // TODO: Don't intersect in object space, world space has floating point precision issues
     if (!RayCylinderIntersect(ray, cylinder))
     {
         return result;
