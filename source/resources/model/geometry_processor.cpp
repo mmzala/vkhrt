@@ -98,6 +98,80 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
     return curves;
 }
 
+// Generate a vector that is orthogonal to the input vector.
+// This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents
+inline glm::vec3 PerpStark(const glm::vec3& u)
+{
+    glm::vec3 a = abs(u);
+    uint32_t uyx = (a.x - a.y) < 0 ? 1 : 0;
+    uint32_t uzx = (a.x - a.z) < 0 ? 1 : 0;
+    uint32_t uzy = (a.y - a.z) < 0 ? 1 : 0;
+    uint32_t xm = uyx & uzx;
+    uint32_t ym = (1 ^ xm) & uzy;
+    uint32_t zm = 1 ^ (xm | ym); // 1 ^ (xm & ym)
+    glm::vec3 v = glm::normalize(cross(u, glm::vec3(xm, ym, zm)));
+    return v;
+}
+
+// Build a local frame from a unit normal vector
+inline void BuildFrame(const glm::vec3& n, glm::vec3& t, glm::vec3& b)
+{
+    t = PerpStark(n);
+    b = glm::cross(n, t);
+}
+
+Mesh GenerateDisjointOrthogonalTriangleStrips(const std::vector<Line>& lines, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float radius = 0.02f)
+{
+    Mesh mesh {};
+    mesh.firstIndex = indexBuffer.size();
+    mesh.firstVertex = vertexBuffer.size();
+
+    const uint32_t numVerticesPerSegment = 4 * 3; // 4 triangles (3 vertices each)
+    const uint32_t numIndices = lines.size() * numVerticesPerSegment;
+    const uint32_t numVertices = numIndices;
+
+    mesh.indexCount = numIndices;
+
+    indexBuffer.resize(indexBuffer.size() + numIndices);
+    vertexBuffer.resize(vertexBuffer.size() + numVertices);
+    uint32_t indexOffset = 0;
+
+    for (const Line& line : lines)
+    {
+        // Build the initial frame
+        glm::vec3 fwd, s, t;
+        fwd = glm::normalize(line.end - line.start);
+        BuildFrame(fwd, s, t);
+
+        glm::vec3 v[2] = { s, t };
+
+        for (uint32_t face = 0; face < 2; ++face)
+        {
+            // Generate indices
+            const uint32_t baseIndex = mesh.firstIndex + indexOffset + face * 6;
+
+            indexBuffer[baseIndex] = baseIndex;
+            indexBuffer[baseIndex + 1] = baseIndex + 1;
+            indexBuffer[baseIndex + 2] = baseIndex + 2;
+            indexBuffer[baseIndex + 3] = baseIndex + 3;
+            indexBuffer[baseIndex + 4] = baseIndex + 4;
+            indexBuffer[baseIndex + 5] = baseIndex + 5;
+
+            // Generate vertices
+            vertexBuffer[baseIndex] = { line.start + v[face] * radius };
+            vertexBuffer[baseIndex + 1] = { line.end - v[face] * radius };
+            vertexBuffer[baseIndex + 2] = { line.end + v[face] * radius };
+            vertexBuffer[baseIndex + 3] = { line.start + v[face] * radius };
+            vertexBuffer[baseIndex + 4] = { line.start - v[face] * radius };
+            vertexBuffer[baseIndex + 5] = { line.end - v[face] * radius };
+        }
+
+        indexOffset += numVerticesPerSegment;
+    }
+
+    return mesh;
+}
+
 Mesh GenerateMeshGeometryCubes(const std::vector<Line>& lines, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize = 0.02f)
 {
     Mesh mesh {};
@@ -236,7 +310,7 @@ std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRad
     return aabbs;
 }
 
-ModelCreation ProcessHair(const ModelCreation& modelCreation)
+ModelCreation ProcessHairCurves(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
         { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
@@ -288,6 +362,44 @@ ModelCreation ProcessHair(const ModelCreation& modelCreation)
     return newModelCreation;
 }
 
+ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
+{
+    const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+    if (it != modelCreation.sceneGraph->meshes.end())
+    {
+        spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
+        return modelCreation;
+    }
+
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
+    std::vector<Mesh::Vertex> newVertexBuffer {};
+    std::vector<uint32_t> newIndexBuffer {};
+
+    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        // Create line segments from hair lines
+        const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
+
+        // Create DOTS mesh from line segments
+        Mesh& newMesh = newMeshes[meshIndex];
+        newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newVertexBuffer, newIndexBuffer, 0.02f);
+        newMesh.material = oldMesh.material;
+    }
+
+    // Update geometry information in the model
+    sceneGraph.meshes = newMeshes;
+    newModelCreation.vertexBuffer = newVertexBuffer;
+    newModelCreation.indexBuffer = newIndexBuffer;
+    return newModelCreation;
+}
+
 ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
@@ -316,7 +428,7 @@ ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
         // Create curves from lines
         const std::vector<Curve> curves = GenerateCurves(lines);
 
-        // Create mesh from line segments
+        // Create mesh from curve segments
         Mesh& newMesh = newMeshes[meshIndex];
         newMesh = GenerateMeshGeometryTubes(curves, newVertexBuffer, newIndexBuffer, 0.02f, 3, 3);
         newMesh.material = oldMesh.material;
