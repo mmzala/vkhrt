@@ -126,10 +126,18 @@ Mesh GenerateDisjointOrthogonalTriangleStrips(const std::vector<Line>& lines, st
     mesh.firstIndex = indexBuffer.size();
     mesh.firstVertex = vertexBuffer.size();
 
+    const uint32_t numVerticesPerSegment = 4 * 3; // 4 triangles (3 vertices each)
+    const uint32_t numIndices = lines.size() * numVerticesPerSegment;
+    const uint32_t numVertices = numIndices;
+
+    mesh.indexCount = numIndices;
+
+    indexBuffer.resize(indexBuffer.size() + numIndices);
+    vertexBuffer.resize(vertexBuffer.size() + numVertices);
+    uint32_t indexOffset = 0;
+
     for (const Line& line : lines)
     {
-        const uint32_t firstStripVertex = vertexBuffer.size();
-
         // Build the initial frame
         glm::vec3 fwd, s, t;
         fwd = glm::normalize(line.end - line.start);
@@ -140,27 +148,26 @@ Mesh GenerateDisjointOrthogonalTriangleStrips(const std::vector<Line>& lines, st
         for (uint32_t face = 0; face < 2; ++face)
         {
             // Generate indices
-            const uint32_t baseIndex = firstStripVertex + face * 6;
+            const uint32_t baseIndex = mesh.firstIndex + indexOffset + face * 6;
 
-            // TODO: Can resize vectors to needed size
-            indexBuffer.push_back(baseIndex);
-            indexBuffer.push_back(baseIndex + 1);
-            indexBuffer.push_back(baseIndex + 2);
-            indexBuffer.push_back(baseIndex + 3);
-            indexBuffer.push_back(baseIndex + 4);
-            indexBuffer.push_back(baseIndex + 5);
+            indexBuffer[baseIndex] = baseIndex;
+            indexBuffer[baseIndex + 1] = baseIndex + 1;
+            indexBuffer[baseIndex + 2] = baseIndex + 2;
+            indexBuffer[baseIndex + 3] = baseIndex + 3;
+            indexBuffer[baseIndex + 4] = baseIndex + 4;
+            indexBuffer[baseIndex + 5] = baseIndex + 5;
 
             // Generate vertices
-            vertexBuffer.push_back({line.start + v[face] * radius});
-            vertexBuffer.push_back({line.end - v[face] * radius});
-            vertexBuffer.push_back({line.end + v[face] * radius});
-            vertexBuffer.push_back({line.start + v[face] * radius});
-            vertexBuffer.push_back({line.start - v[face] * radius});
-            vertexBuffer.push_back({line.end - v[face] * radius});
+            vertexBuffer[baseIndex] = {line.start + v[face] * radius};
+            vertexBuffer[baseIndex + 1] = {line.end - v[face] * radius};
+            vertexBuffer[baseIndex + 2] = {line.end + v[face] * radius};
+            vertexBuffer[baseIndex + 3] = {line.start + v[face] * radius};
+            vertexBuffer[baseIndex + 4] = {line.start - v[face] * radius};
+            vertexBuffer[baseIndex + 5] = {line.end - v[face] * radius};
         }
-    }
 
-    mesh.indexCount = indexBuffer.size() - mesh.firstIndex;
+        indexOffset += numVerticesPerSegment;
+    }
 
     return mesh;
 }
