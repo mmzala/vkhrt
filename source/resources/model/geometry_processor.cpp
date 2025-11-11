@@ -98,8 +98,8 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
     return curves;
 }
 
-// Generate a vector that is orthogonal to the input vector
-// This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents.
+// Generate a vector that is orthogonal to the input vector.
+// This can be used to invent a tangent frame for meshes that don't have real tangents/bitangents
 inline glm::vec3 PerpStark(const glm::vec3& u)
 {
     glm::vec3 a = abs(u);
@@ -113,7 +113,7 @@ inline glm::vec3 PerpStark(const glm::vec3& u)
     return v;
 }
 
-// Build a local frame from a unit normal vector.
+// Build a local frame from a unit normal vector
 inline void BuildFrame(const glm::vec3& n, glm::vec3& t, glm::vec3& b)
 {
     t = PerpStark(n);
@@ -158,12 +158,12 @@ Mesh GenerateDisjointOrthogonalTriangleStrips(const std::vector<Line>& lines, st
             indexBuffer[baseIndex + 5] = baseIndex + 5;
 
             // Generate vertices
-            vertexBuffer[baseIndex] = {line.start + v[face] * radius};
-            vertexBuffer[baseIndex + 1] = {line.end - v[face] * radius};
-            vertexBuffer[baseIndex + 2] = {line.end + v[face] * radius};
-            vertexBuffer[baseIndex + 3] = {line.start + v[face] * radius};
-            vertexBuffer[baseIndex + 4] = {line.start - v[face] * radius};
-            vertexBuffer[baseIndex + 5] = {line.end - v[face] * radius};
+            vertexBuffer[baseIndex] = { line.start + v[face] * radius };
+            vertexBuffer[baseIndex + 1] = { line.end - v[face] * radius };
+            vertexBuffer[baseIndex + 2] = { line.end + v[face] * radius };
+            vertexBuffer[baseIndex + 3] = { line.start + v[face] * radius };
+            vertexBuffer[baseIndex + 4] = { line.start - v[face] * radius };
+            vertexBuffer[baseIndex + 5] = { line.end - v[face] * radius };
         }
 
         indexOffset += numVerticesPerSegment;
