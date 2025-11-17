@@ -8,6 +8,7 @@
 #include "bindless.glsl"
 #include "ray.glsl"
 #include "primitives.glsl"
+#include "debug.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
 layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
@@ -50,5 +51,5 @@ void main()
         albedo *= texture(textures[nonuniformEXT(material.albedoMapIndex)], triangle.texCoord);
     }
 
-    payload.hitValue = albedo.rgb;
+    payload.hitValue = GetDebugColor(gl_PrimitiveID);
 }
