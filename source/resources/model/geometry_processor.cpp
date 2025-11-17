@@ -63,6 +63,43 @@ std::vector<Line> GenerateLines(const Mesh& mesh, const std::vector<Mesh::Vertex
     return lineSegments;
 }
 
+std::vector<Line> MergeLines(const std::vector<Line>& lines)
+{
+    std::vector<Line> newLines {};
+
+    uint32_t wantedLinesCount = lines.size() / 2;
+    newLines.reserve(wantedLinesCount);
+
+    for (uint32_t i = 0; i < wantedLinesCount; ++i)
+    {
+        uint32_t oldLineIndex = i * 2;
+        const Line& oldLine1 = lines[oldLineIndex];
+
+        // If only 1 line remaining, put it back into list
+        if (oldLineIndex + 1 == lines.size())
+        {
+            newLines.push_back(oldLine1);
+            break;
+        }
+
+        const Line& oldLine2 = lines[oldLineIndex + 1];
+
+        // If lines are not connected, we can't merge them so put them back and continue
+        if (oldLine1.end != oldLine2.start)
+        {
+            newLines.push_back(oldLine1);
+            newLines.push_back(oldLine2);
+            continue;
+        }
+
+        Line& newLine = newLines.emplace_back();
+        newLine.start = oldLine1.start;
+        newLine.end = oldLine2.end;
+    }
+
+    return newLines;
+}
+
 std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension = 1.0f)
 {
     std::vector<Curve> curves {};
@@ -96,6 +133,47 @@ std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension 
     }
 
     return curves;
+}
+
+std::vector<Curve> MergeCurvesFast(const std::vector<Curve>& curves)
+{
+    std::vector<Curve> newCurves {};
+
+    uint32_t wantedCurvesCount = curves.size() / 2;
+    newCurves.reserve(wantedCurvesCount);
+
+    for (uint32_t i = 0; i < wantedCurvesCount; ++i)
+    {
+        uint32_t oldCurveIndex = i * 2;
+        const Curve& oldCurve1 = curves[oldCurveIndex];
+
+        // If only 1 curve remaining, put it back into list
+        if (oldCurveIndex + 1 == curves.size())
+        {
+            newCurves.push_back(oldCurve1);
+            break;
+        }
+
+        const Curve& oldCurve2 = curves[oldCurveIndex + 1];
+
+        // If curves are not connected, we can't merge them so put them back and continue
+        if (oldCurve1.end != oldCurve2.start)
+        {
+            newCurves.push_back(oldCurve1);
+            newCurves.push_back(oldCurve2);
+            continue;
+        }
+
+        Curve& newCuve = newCurves.emplace_back();
+        newCuve.start = oldCurve1.start;
+        newCuve.end = oldCurve2.end;
+
+        glm::vec3 middlePoint = (oldCurve1.controlPoint2 + oldCurve2.controlPoint1) * 0.5f;
+        newCuve.controlPoint1 = (oldCurve1.controlPoint1 + middlePoint) * 0.5f;
+        newCuve.controlPoint2 = (middlePoint + oldCurve2.controlPoint2) * 0.5f;
+    }
+
+    return newCurves;
 }
 
 // Generate a vector that is orthogonal to the input vector.

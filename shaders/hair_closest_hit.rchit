@@ -8,14 +8,13 @@
 #include "bindless.glsl"
 #include "ray.glsl"
 #include "primitives.glsl"
+#include "debug.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
 layout(buffer_reference, scalar) readonly buffer Indices { uint indices[]; };
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
 hitAttributeEXT vec3 attribNormal;
-
-vec3 colors[6] = vec3[](vec3(1.0, 0.0, 0.3), vec3(0.8, 0.2, 0.3), vec3(0.6, 0.4, 0.3), vec3(0.4, 0.6, 0.3), vec3(0.2, 0.8, 0.3), vec3(0.0, 1.0, 0.3));
 
 void main()
 {
@@ -32,8 +31,5 @@ void main()
     vec3 color = abs(dot(normal, lightDirection)) * lightColor;
     color += ambientColor;
 
-    // int index = gl_PrimitiveID % 6;
-    // vec3 color = colors[index];
-
-    payload.hitValue = color;
+    payload.hitValue = GetDebugColor(gl_PrimitiveID);
 }
