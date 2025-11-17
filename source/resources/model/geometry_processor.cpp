@@ -63,6 +63,43 @@ std::vector<Line> GenerateLines(const Mesh& mesh, const std::vector<Mesh::Vertex
     return lineSegments;
 }
 
+std::vector<Line> MergeLines(const std::vector<Line>& lines)
+{
+    std::vector<Line> newLines {};
+
+    uint32_t wantedLinesCount = lines.size() / 2;
+    newLines.reserve(wantedLinesCount);
+
+    for (uint32_t i = 0; i < wantedLinesCount; ++i)
+    {
+        uint32_t oldLineIndex = i * 2;
+        const Line& oldLine1 = lines[oldLineIndex];
+
+        // If only 1 line remaining, put it back into list
+        if (oldLineIndex + 1 == lines.size())
+        {
+            newLines.push_back(oldLine1);
+            break;
+        }
+
+        const Line& oldLine2 = lines[oldLineIndex + 1];
+
+        // If lines are not connected, we can't merge them so put them back and continue
+        if (oldLine1.end != oldLine2.start)
+        {
+            newLines.push_back(oldLine1);
+            newLines.push_back(oldLine2);
+            continue;
+        }
+
+        Line& newLine = newLines.emplace_back();
+        newLine.start = oldLine1.start;
+        newLine.end = oldLine2.end;
+    }
+
+    return newLines;
+}
+
 std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension = 1.0f)
 {
     std::vector<Curve> curves {};
