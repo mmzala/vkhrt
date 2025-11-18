@@ -23,13 +23,11 @@ void main()
     vec4 target = cam.projInverse * vec4(d.x, d.y, 1, 1);
     vec4 direction = cam.viewInverse * vec4(normalize(target.xyz), 0);
 
-    uint  rayFlags = gl_RayFlagsOpaqueEXT;
-    float tMin     = 0.001;
-    float tMax     = 10000.0;
+    uint rayFlags = gl_RayFlagsOpaqueEXT;
+    float tMin = 0.001;
+    float tMax = 10000.0;
 
     payload.hitValue = vec3(0);
-    payload.ray.origin = origin.xyz;
-    payload.ray.direction = direction.xyz;
 
     traceRayEXT(topLevelAS,             // acceleration structure
                 rayFlags,               // rayFlags
@@ -37,9 +35,9 @@ void main()
                 0,                      // sbtRecordOffset
                 0,                      // sbtRecordStride
                 0,                      // missIndex
-                payload.ray.origin,     // ray origin
+                origin.xyz,             // ray origin
                 tMin,                   // ray min range
-                payload.ray.direction,  // ray direction
+                direction.xyz,          // ray direction
                 tMax,                   // ray max range
                 0                       // payload (location = 0)
     );

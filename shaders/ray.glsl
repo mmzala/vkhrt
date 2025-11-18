@@ -7,7 +7,6 @@ struct Ray
 struct HitPayload
 {
     vec3 hitValue;
-    Ray ray;
 };
 
 void MakeOrthonormalBasis(out vec3 u, out vec3 v, vec3 w)
