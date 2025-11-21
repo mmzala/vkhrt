@@ -100,6 +100,23 @@ std::vector<Line> MergeLines(const std::vector<Line>& lines)
     return newLines;
 }
 
+std::vector<Line> SplitLines(const std::vector<Line>& lines)
+{
+    std::vector<Line> newLines {};
+
+    uint32_t wantedLinesCount = lines.size() * 2;
+    newLines.reserve(wantedLinesCount);
+
+    for (const Line& oldLine : lines)
+    {
+        glm::vec3 middlePoint = (oldLine.start + oldLine.end) * 0.5f;
+        newLines.push_back({ oldLine.start, middlePoint });
+        newLines.push_back({ middlePoint, oldLine.end });
+    }
+
+    return newLines;
+}
+
 std::vector<Curve> GenerateCurves(const std::vector<Line>& lines, float tension = 1.0f)
 {
     std::vector<Curve> curves {};
@@ -458,7 +475,7 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
     std::vector<Mesh::Vertex> newVertexBuffer {};
     std::vector<uint32_t> newIndexBuffer {};
 
-    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    for (uint32_t meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
         const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
 
