@@ -3,7 +3,7 @@
 
 #include "ray.glsl"
 
-layout(set = 1, binding = 0, rgba8) uniform image2D image;
+layout(set = 1, binding = 0) writeonly uniform image2D image;
 layout(set = 1, binding = 1) uniform accelerationStructureEXT topLevelAS;
 layout(set = 2, binding = 0) uniform CameraProperties
 {
