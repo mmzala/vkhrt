@@ -33,15 +33,15 @@ void SwapChain::InitializeSwapChain(glm::uvec2 screenSize)
     auto presentMode = ChoosePresentMode(swapChainSupport.presentModes);
     auto extent = ChooseSwapExtent(swapChainSupport.capabilities, screenSize);
 
-    uint32_t imageCount = swapChainSupport.capabilities.minImageCount + 1;
-    if (swapChainSupport.capabilities.maxImageCount > 0 && imageCount > swapChainSupport.capabilities.maxImageCount)
+    uint32_t imageCount = MAX_FRAMES_IN_FLIGHT;
+    if (imageCount > swapChainSupport.capabilities.maxImageCount)
     {
         imageCount = swapChainSupport.capabilities.maxImageCount;
     }
 
     vk::SwapchainCreateInfoKHR createInfo {};
     createInfo.surface = _vulkanContext->Surface();
-    createInfo.minImageCount = imageCount + 1;
+    createInfo.minImageCount = imageCount;
     createInfo.imageFormat = surfaceFormat.format;
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
