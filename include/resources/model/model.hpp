@@ -10,6 +10,7 @@ struct Node
     glm::mat4 localMatrix {};
     std::vector<uint32_t> meshes {};
     std::vector<uint32_t> hairs {};
+    std::vector<uint32_t> voxelMeshes {};
 
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
@@ -57,6 +58,7 @@ struct Mesh
     uint32_t firstIndex {};
     uint32_t firstVertex {};
     ResourceHandle<Material> material {};
+    AABB boundingBox {};
 
     [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
@@ -70,6 +72,13 @@ struct Hair
     ResourceHandle<Material> material {};
 };
 
+struct VoxelMesh
+{
+    std::vector<bool> voxels {}; // TODO: Don't store after uploaded to GPU
+    AABB boundingBox {};
+    glm::ivec3 gridResolution {};
+};
+
 struct SceneGraph
 {
     SceneGraph() = default;
@@ -79,6 +88,7 @@ struct SceneGraph
     std::vector<Node> nodes {}; // TODO: Nodes themselves are still copyable, but we just overlook this for now (maybe make this vector a pointer or just rely on a root node only?)
     std::vector<Mesh> meshes {};
     std::vector<Hair> hairs {};
+    std::vector<VoxelMesh> voxelMeshes {};
     std::vector<ResourceHandle<Image>> textures {};
     std::vector<ResourceHandle<Material>> materials {};
 };

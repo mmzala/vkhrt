@@ -1,4 +1,7 @@
 #include "resources/model/geometry_processor.hpp"
+
+#include "glm/ext/vector_ulp.hpp"
+
 #include <glm/ext/scalar_constants.hpp>
 #include <spdlog/spdlog.h>
 
@@ -405,6 +408,61 @@ std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRad
     return aabbs;
 }
 
+template<typename T, typename B>
+T NextDivisible(const T& dividend, const B divisor)
+{
+    return glm::ceil(dividend / divisor) * divisor;
+}
+
+glm::vec3 GetVoxelWorldPosition(const glm::vec3& worldPosition, float voxelSize)
+{
+    return glm::floor(worldPosition / voxelSize);
+}
+
+glm::ivec3 GetVoxelIndex3D(const glm::vec3& worldPosition, const glm::vec3& voxelGridOrigin, float voxelSize)
+{
+    return glm::floor((worldPosition - voxelGridOrigin) / voxelSize);
+}
+
+uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxelGridResolution)
+{
+    return voxelIndex3D.x +
+        voxelIndex3D.y * voxelGridResolution.x +
+        voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
+}
+
+VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float voxelSize)
+{
+    VoxelMesh voxelMesh {};
+    voxelMesh.boundingBox.min = meshBounds.min;
+    voxelMesh.boundingBox.max = meshBounds.max;
+
+    // Expand grid bounds until we can fit whole voxels inside
+    glm::vec3 voxelGridAreaDistance = voxelMesh.boundingBox.max - voxelMesh.boundingBox.min;
+    voxelGridAreaDistance = NextDivisible(voxelGridAreaDistance, voxelSize);
+    voxelMesh.boundingBox.max = voxelMesh.boundingBox.min + voxelGridAreaDistance;
+
+    // Set grid resolution
+    voxelMesh.gridResolution = voxelGridAreaDistance / voxelSize;
+    const uint32_t numVoxels = voxelMesh.gridResolution.x * voxelMesh.gridResolution.y * voxelMesh.gridResolution.z;
+    voxelMesh.voxels = std::vector<bool>(numVoxels, false);
+
+    spdlog::info("voxel grid size: {} with grid distance {}, {}, {}", voxelMesh.voxels.size(), voxelGridAreaDistance.x, voxelGridAreaDistance.y, voxelGridAreaDistance.z);
+    spdlog::info("voxel grid res {}, {}, {}", voxelMesh.gridResolution.x, voxelMesh.gridResolution.y, voxelMesh.gridResolution.z);
+    spdlog::info("voxel bounds {}, {}, {} to {}, {}, {}", voxelMesh.boundingBox.min.x, voxelMesh.boundingBox.min.y, voxelMesh.boundingBox.min.z, voxelMesh.boundingBox.max.x, voxelMesh.boundingBox.max.y, voxelMesh.boundingBox.max.z);
+
+    // Voxelize lines
+    for (const Line& line : lines)
+    {
+        glm::ivec3 index3D = GetVoxelIndex3D(line.end, voxelMesh.boundingBox.min, voxelSize);
+        uint32_t index1D = GetVoxelIndex1D(index3D, voxelMesh.gridResolution);
+
+        voxelMesh.voxels[index1D] = true;
+    }
+
+    return voxelMesh;
+}
+
 ModelCreation ProcessHairCurves(const ModelCreation& modelCreation)
 {
     const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
@@ -482,6 +540,8 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
         // Create line segments from hair lines
         const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
 
+        GenerateVoxelMesh(lines, oldMesh.boundingBox, 12.0f);
+
         // Create DOTS mesh from line segments
         Mesh& newMesh = newMeshes[meshIndex];
         newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newVertexBuffer, newIndexBuffer, 0.02f);
@@ -492,6 +552,44 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
     sceneGraph.meshes = newMeshes;
     newModelCreation.vertexBuffer = newVertexBuffer;
     newModelCreation.indexBuffer = newIndexBuffer;
+    return newModelCreation;
+}
+
+ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
+{
+    const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+    if (it != modelCreation.sceneGraph->meshes.end())
+    {
+        spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
+        return modelCreation;
+    }
+
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        VoxelMesh& hair = sceneGraph.voxelMeshes.emplace_back();
+
+        // Create line segments from hair lines
+        const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
+
+
+    }
+
+    // Update scene graph to use hair
+    sceneGraph.meshes.clear();
+
+    for (Node& node : sceneGraph.nodes)
+    {
+        node.voxelMeshes = node.meshes; // Since we don't support models with mixed voxel meshes and mesh geometry for now, we just copy the information
+        node.meshes.clear();
+    }
+
     return newModelCreation;
 }
 
