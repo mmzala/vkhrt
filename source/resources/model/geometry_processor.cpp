@@ -356,7 +356,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
             for (uint32_t j = 0; j < numRadialSamples; j++)
             {
                 float theta = (2.0f * glm::pi<float>() * j) / static_cast<float>(numRadialSamples);
-                glm::vec3 offset = radius * (cos(theta) * n + sin(theta) * b);
+                glm::vec3 offset = radius * (glm::cos(theta) * n + glm::sin(theta) * b);
                 glm::vec3 vertex = point + offset;
 
                 vertexBuffer.push_back({ vertex });

@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <vulkan/vulkan.hpp>
+#include <memory>
 #include "common.hpp"
 
 class VulkanContext;
