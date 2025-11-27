@@ -18,6 +18,9 @@ hitAttributeEXT vec3 attribNormal;
 
 void main()
 {
+    payload.hitValue = GetDebugColor(gl_PrimitiveID);
+    return;
+
     BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
     GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
     Material material = materials[nonuniformEXT(geometryNode.materialIndex)];

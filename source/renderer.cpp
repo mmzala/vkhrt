@@ -1,4 +1,5 @@
 #include "renderer.hpp"
+#include "../build/x64-Release/_deps/spdlog-src/include/spdlog/spdlog.h"
 #include "fly_camera.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/camera_resource.hpp"
@@ -7,6 +8,7 @@
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
 #include "vulkan_context.hpp"
+
 #include <backends/imgui_impl_vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -561,6 +563,43 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     return output;
 }
 
+BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const VoxelMesh& voxelMesh, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    BLASInput output {};
+    output.type = BLASType::eHair;
+    output.transform = node.GetWorldMatrix();
+
+    spdlog::info("adding! first: {} / total: {}", voxelMesh.firstAabb, voxelMesh.aabbCount);
+
+    vk::DeviceOrHostAddressConstKHR aabbBufferDeviceAddress {};
+    aabbBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->aabbBuffer->buffer) + voxelMesh.firstAabb * sizeof(AABB);
+
+    spdlog::info("addaaaaaaaaaaaaaaaaing!");
+
+    vk::AccelerationStructureGeometryAabbsDataKHR aabbData {};
+    aabbData.data = aabbBufferDeviceAddress;
+    aabbData.stride = sizeof(AABB);
+
+    vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = output.geometry;
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eAabbs;
+    accelerationStructureGeometry.geometry.aabbs = aabbData;
+
+    const uint32_t primitiveCount = voxelMesh.aabbCount;
+
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    buildRangeInfo.primitiveCount = primitiveCount;
+    buildRangeInfo.primitiveOffset = 0;
+    buildRangeInfo.firstVertex = 0;
+    buildRangeInfo.transformOffset = 0;
+
+    GeometryNodeCreation& nodeCreation = output.node;
+    nodeCreation.primitiveBufferDeviceAddress = vk::DeviceAddress {}; // TODO: Accel structure
+    nodeCreation.material = voxelMesh.material;
+
+    return output;
+}
+
 void Renderer::InitializeBLAS()
 {
     for (const auto& model : _models)
@@ -578,6 +617,12 @@ void Renderer::InitializeBLAS()
             for (const auto hair : node.hairs)
             {
                 BLASInput input = InitializeBLASInput(model, node, sceneGraph->hairs[hair], _vulkanContext);
+                _blases.emplace_back(input, _bindlessResources, _vulkanContext);
+            }
+
+            for (const auto voxelMesh : node.voxelMeshes)
+            {
+                BLASInput input = InitializeBLASInput(model, node, sceneGraph->voxelMeshes[voxelMesh], _vulkanContext);
                 _blases.emplace_back(input, _bindlessResources, _vulkanContext);
             }
         }

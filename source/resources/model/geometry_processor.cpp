@@ -392,7 +392,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
-std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius = 0.05f)
+std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius)
 {
     std::vector<AABB> aabbs(curves.size());
 
@@ -403,6 +403,40 @@ std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRad
 
         aabb.min = glm::min(glm::min(curve.start, curve.end), glm::min(curve.controlPoint1, curve.controlPoint2)) - curveRadius;
         aabb.max = glm::max(glm::max(curve.start, curve.end), glm::max(curve.controlPoint1, curve.controlPoint2)) + curveRadius;
+    }
+
+    return aabbs;
+}
+
+glm::vec3 GetVoxelWorldPosition(uint32_t voxelIndex1D, const glm::vec3& voxelGridOrigin, const glm::ivec3& voxelGridResolution, float voxelSize)
+{
+    // Unflatten index
+    glm::vec3 voxelIndex3D {};
+    voxelIndex3D.z = voxelIndex1D / (voxelGridResolution.x * voxelGridResolution.y);
+    uint32_t remainder = voxelIndex1D % (voxelGridResolution.x * voxelGridResolution.y);
+    voxelIndex3D.y = remainder / voxelGridResolution.x;
+    voxelIndex3D.x = remainder % voxelGridResolution.x;
+
+    // Convert to world space
+    return voxelGridOrigin + voxelIndex3D * voxelSize;
+}
+
+std::vector<AABB> GenerateAABBs(const VoxelMesh& voxelMesh, float voxelSize)
+{
+    std::vector<AABB> aabbs(voxelMesh.voxels.size());
+
+    for (uint32_t i = 0; i < voxelMesh.voxels.size(); ++i)
+    {
+        if (!voxelMesh.voxels[i])
+        {
+            continue;
+        }
+
+        glm::vec3 voxelWorldPosition = GetVoxelWorldPosition(i, voxelMesh.boundingBox.min, voxelMesh.gridResolution, voxelSize);
+
+        AABB& aabb = aabbs[i];
+        aabb.min = voxelWorldPosition;
+        aabb.max = voxelWorldPosition + voxelSize;
     }
 
     return aabbs;
@@ -456,6 +490,12 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
     {
         glm::ivec3 index3D = GetVoxelIndex3D(line.end, voxelMesh.boundingBox.min, voxelSize);
         uint32_t index1D = GetVoxelIndex1D(index3D, voxelMesh.gridResolution);
+
+        if (index1D >= numVoxels)
+        {
+            spdlog::info("kaka");
+            continue;
+        }
 
         voxelMesh.voxels[index1D] = true;
     }
@@ -540,8 +580,6 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
         // Create line segments from hair lines
         const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
 
-        GenerateVoxelMesh(lines, oldMesh.boundingBox, 12.0f);
-
         // Create DOTS mesh from line segments
         Mesh& newMesh = newMeshes[meshIndex];
         newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newVertexBuffer, newIndexBuffer, 0.02f);
@@ -569,16 +607,29 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
     newModelCreation.sceneGraph = modelCreation.sceneGraph;
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
+    std::vector<VoxelMesh> newMeshes(sceneGraph.meshes.size());
+
     for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
         const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
 
-        VoxelMesh& hair = sceneGraph.voxelMeshes.emplace_back();
-
         // Create line segments from hair lines
         const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
 
+        // Voxelize mesh
+        constexpr float voxelSize = 12.0f;
 
+        VoxelMesh& newMesh = newMeshes[meshIndex];
+        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize);
+        newMesh.material = oldMesh.material;
+        newMesh.firstAabb = newModelCreation.aabbBuffer.size();
+
+        // Generate debug AABBs
+        const std::vector<AABB> aabbs = GenerateAABBs(newMesh, voxelSize);
+        newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
+
+        // Update hair information
+        newMesh.aabbCount = aabbs.size();
     }
 
     // Update scene graph to use hair

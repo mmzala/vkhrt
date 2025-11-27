@@ -131,6 +131,9 @@ float Prhi(Ray ray, Curve curve)
 
 void main()
 {
+    reportIntersectionEXT(1.0, 0);
+    return;
+
     BLASInstance blasInstance = blasInstances[gl_InstanceCustomIndexEXT];
     GeometryNode geometryNode = geometryNodes[blasInstance.firstGeometryIndex + gl_GeometryIndexEXT];
 

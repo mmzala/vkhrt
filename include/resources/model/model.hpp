@@ -77,6 +77,10 @@ struct VoxelMesh
     std::vector<bool> voxels {}; // TODO: Don't store after uploaded to GPU
     AABB boundingBox {};
     glm::ivec3 gridResolution {};
+    ResourceHandle<Material> material {};
+
+    uint32_t aabbCount {};
+    uint32_t firstAabb {};
 };
 
 struct SceneGraph
