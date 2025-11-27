@@ -1,3 +1,9 @@
+if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    add_compile_options(/W0)
+else()
+    add_compile_options(-w)
+endif()
+
 # Vulkan
 
 find_package(Vulkan REQUIRED)
@@ -53,8 +59,6 @@ set(SDL_SHARED OFF)
 set(SDL_STATIC ON)
 FetchContent_MakeAvailable(SDL)
 
-target_compile_options(SDL3-static PRIVATE -Wno-deprecated-declarations)
-
 # GLM
 
 FetchContent_Declare(
@@ -87,10 +91,6 @@ set(ASSIMP_INJECT_DEBUG_POSTFIX OFF CACHE BOOL "" FORCE)
 set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(assimp)
-
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(assimp PRIVATE -Wdeprecated-non-prototype)
-endif()
 
 target_include_directories(Assimp INTERFACE ${assimp_SOURCE_DIR}/include)
 target_include_directories(Assimp INTERFACE ${assimp_BINARY_DIR}/include) # Include for assimp config
