@@ -88,7 +88,9 @@ set(ASSIMP_INSTALL OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(assimp)
 
-target_compile_options(assimp PRIVATE -Wdeprecated-non-prototype)
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    target_compile_options(assimp PRIVATE -Wdeprecated-non-prototype)
+endif()
 
 target_include_directories(Assimp INTERFACE ${assimp_SOURCE_DIR}/include)
 target_include_directories(Assimp INTERFACE ${assimp_BINARY_DIR}/include) # Include for assimp config
