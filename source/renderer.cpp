@@ -569,12 +569,8 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     output.type = BLASType::eHair;
     output.transform = node.GetWorldMatrix();
 
-    spdlog::info("adding! first: {} / total: {}", voxelMesh.firstAabb, voxelMesh.aabbCount);
-
     vk::DeviceOrHostAddressConstKHR aabbBufferDeviceAddress {};
     aabbBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->aabbBuffer->buffer) + voxelMesh.firstAabb * sizeof(AABB);
-
-    spdlog::info("addaaaaaaaaaaaaaaaaing!");
 
     vk::AccelerationStructureGeometryAabbsDataKHR aabbData {};
     aabbData.data = aabbBufferDeviceAddress;

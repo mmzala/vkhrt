@@ -607,8 +607,6 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
     newModelCreation.sceneGraph = modelCreation.sceneGraph;
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
-    std::vector<VoxelMesh> newMeshes(sceneGraph.meshes.size());
-
     for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
         const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
@@ -619,7 +617,7 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
         // Voxelize mesh
         constexpr float voxelSize = 12.0f;
 
-        VoxelMesh& newMesh = newMeshes[meshIndex];
+        VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
         newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize);
         newMesh.material = oldMesh.material;
         newMesh.firstAabb = newModelCreation.aabbBuffer.size();
