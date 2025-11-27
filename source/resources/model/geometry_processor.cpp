@@ -493,8 +493,7 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
 
         if (index1D >= numVoxels)
         {
-            spdlog::info("kaka");
-            continue;
+            continue; // TODO: Look at this case as this should never happen
         }
 
         voxelMesh.voxels[index1D] = true;
@@ -615,7 +614,7 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
         const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
 
         // Voxelize mesh
-        constexpr float voxelSize = 12.0f;
+        constexpr float voxelSize = 0.1f;
 
         VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
         newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize);
