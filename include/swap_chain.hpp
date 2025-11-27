@@ -1,7 +1,8 @@
 #pragma once
-#include "common.hpp"
 #include <vulkan/vulkan.hpp>
 #include <glm/glm.hpp>
+#include <memory>
+#include "common.hpp"
 
 class VulkanContext;
 
