@@ -1,6 +1,7 @@
 #include "resources/model/geometry_processor.hpp"
 
 #include "glm/ext/vector_ulp.hpp"
+#include "glm/gtx/optimum_pow.hpp"
 
 #include <glm/ext/scalar_constants.hpp>
 #include <spdlog/spdlog.h>
@@ -465,7 +466,27 @@ uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxel
         voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
 }
 
-VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float voxelSize, std::vector<bool>& voxels)
+std::array<uint8_t, 3> GetMajorAxes(const glm::vec3& v)
+{
+    std::array<uint8_t, 3> axes = {0, 1, 2};
+    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b) { return v[a] > v[b]; });
+    return axes;
+}
+
+void FillVoxel(const glm::ivec3& index3D, VoxelMesh& mesh, std::vector<bool>& voxels)
+{
+    uint32_t index1D = GetVoxelIndex1D(index3D, mesh.voxelGridResolution);
+
+    if (index1D >= voxels.size())
+    {
+        return; // TODO: Look at this case as this should never happen
+    }
+
+    voxels[mesh.firstVoxel + index1D] = true;
+    mesh.filledVoxelCount++;
+}
+
+VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float hairRadius, float voxelSize, std::vector<bool>& voxels)
 {
     VoxelMesh voxelMesh {};
     voxelMesh.firstVoxel = voxels.size();
@@ -489,16 +510,48 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
     // Voxelize lines
     for (const Line& line : lines)
     {
-        glm::ivec3 index3D = GetVoxelIndex3D(line.end, voxelMesh.boundingBox.min, voxelSize);
-        uint32_t index1D = GetVoxelIndex1D(index3D, voxelMesh.voxelGridResolution);
+        glm::vec3 d = line.end - line.start;
+        std::array<uint8_t, 3> a = GetMajorAxes(d);
 
-        if (index1D >= numVoxels)
+        // Make sure the major axis is always positive by swapping points
+        glm::vec3 v0 = d[a[0]] < 0.0f ? line.end : line.start;
+        glm::vec3 v1 = d[a[0]] < 0.0f ? line.start : line.end;
+
+        // Step vector from one major axis voxel boundary to the next
+        glm::vec3 s = d / d[a[0]];
+
+        // Get extended line segments to capture capsule ends
+        glm::vec3 sr = s * hairRadius;
+        glm::vec3 vr0 = v0 * sr;
+        glm::vec3 vr1 = v1 * sr;
+
+        // Get projected capsule radius on both minor axes
+        float dn = glm::length(d);
+        float r1 = hairRadius / glm::sqrt(1.0f - glm::pow2(d[a[1]] / dn));
+        float r2 = hairRadius / glm::sqrt(1.0f - glm::pow2(d[a[2]] / dn));
+
+        // Setup starting point for
+        float tmin = vr0[a[0]];
+        float tmax = vr1[a[0]];
+        float t0 = tmin;
+        glm::vec3 p0 = vr0;
+
+        while (t0 < tmax)
         {
-            continue; // TODO: Look at this case as this should never happen
-        }
+            // Compute next intersection point
+            float t1 = glm::min(tmax, glm::floor(t0 + 1));
+            glm::vec3 p1 = vr0 + s * (t1 - tmin);
 
-        voxels[voxelMesh.firstVoxel + index1D] = true;
-        voxelMesh.filledVoxelCount++;
+            // Define box to voxelize
+            glm::ivec3 index3D = GetVoxelIndex3D(worldPosition, mesh.boundingBox.min, voxelSize);
+
+            // Visit all voxels within box
+
+
+            // Move to next intersection point
+            t0 = t1;
+            p0 = p1;
+        }
     }
 
     return voxelMesh;
@@ -613,9 +666,10 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
 
         // Voxelize mesh
         constexpr float voxelSize = 0.1f;
+        constexpr float hairRadius = 0.02f;
 
         VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
-        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize, newModelCreation.voxelGridBuffer);
+        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, hairRadius, voxelSize, newModelCreation.voxelGridBuffer);
         newMesh.material = oldMesh.material;
         newMesh.firstAabb = newModelCreation.aabbBuffer.size();
 
