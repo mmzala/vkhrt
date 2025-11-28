@@ -20,6 +20,7 @@ private:
     {
         uint32_t trianglePrimitivesCount;
         uint32_t curvePrimitivesCount;
+        uint32_t filledVoxelPrimitivesCount;
     } _sceneInformation {};
 
     const Application& _application;

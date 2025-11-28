@@ -421,18 +421,18 @@ glm::vec3 GetVoxelWorldPosition(uint32_t voxelIndex1D, const glm::vec3& voxelGri
     return voxelGridOrigin + voxelIndex3D * voxelSize;
 }
 
-std::vector<AABB> GenerateAABBs(const VoxelMesh& voxelMesh, float voxelSize)
+std::vector<AABB> GenerateAABBs(const VoxelMesh& voxelMesh, const std::vector<bool>& voxels, float voxelSize)
 {
-    std::vector<AABB> aabbs(voxelMesh.voxels.size());
+    std::vector<AABB> aabbs(voxels.size());
 
-    for (uint32_t i = 0; i < voxelMesh.voxels.size(); ++i)
+    for (uint32_t i = 0; i < voxels.size(); ++i)
     {
-        if (!voxelMesh.voxels[i])
+        if (!voxels[i])
         {
             continue;
         }
 
-        glm::vec3 voxelWorldPosition = GetVoxelWorldPosition(i, voxelMesh.boundingBox.min, voxelMesh.gridResolution, voxelSize);
+        glm::vec3 voxelWorldPosition = GetVoxelWorldPosition(i, voxelMesh.boundingBox.min, voxelMesh.voxelGridResolution, voxelSize);
 
         AABB& aabb = aabbs[i];
         aabb.min = voxelWorldPosition;
@@ -465,9 +465,10 @@ uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxel
         voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
 }
 
-VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float voxelSize)
+VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float voxelSize, std::vector<bool>& voxels)
 {
     VoxelMesh voxelMesh {};
+    voxelMesh.firstVoxel = voxels.size();
     voxelMesh.boundingBox.min = meshBounds.min;
     voxelMesh.boundingBox.max = meshBounds.max;
 
@@ -477,26 +478,27 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
     voxelMesh.boundingBox.max = voxelMesh.boundingBox.min + voxelGridAreaDistance;
 
     // Set grid resolution
-    voxelMesh.gridResolution = voxelGridAreaDistance / voxelSize;
-    const uint32_t numVoxels = voxelMesh.gridResolution.x * voxelMesh.gridResolution.y * voxelMesh.gridResolution.z;
-    voxelMesh.voxels = std::vector<bool>(numVoxels, false);
+    voxelMesh.voxelGridResolution = voxelGridAreaDistance / voxelSize;
+    const uint32_t numVoxels = voxelMesh.voxelGridResolution.x * voxelMesh.voxelGridResolution.y * voxelMesh.voxelGridResolution.z;
+    voxels.resize(voxels.size() + numVoxels);
 
-    spdlog::info("voxel grid size: {} with grid distance {}, {}, {}", voxelMesh.voxels.size(), voxelGridAreaDistance.x, voxelGridAreaDistance.y, voxelGridAreaDistance.z);
-    spdlog::info("voxel grid res {}, {}, {}", voxelMesh.gridResolution.x, voxelMesh.gridResolution.y, voxelMesh.gridResolution.z);
+    spdlog::info("voxel grid size: {} with grid distance {}, {}, {}", voxels.size(), voxelGridAreaDistance.x, voxelGridAreaDistance.y, voxelGridAreaDistance.z);
+    spdlog::info("voxel grid res {}, {}, {}", voxelMesh.voxelGridResolution.x, voxelMesh.voxelGridResolution.y, voxelMesh.voxelGridResolution.z);
     spdlog::info("voxel bounds {}, {}, {} to {}, {}, {}", voxelMesh.boundingBox.min.x, voxelMesh.boundingBox.min.y, voxelMesh.boundingBox.min.z, voxelMesh.boundingBox.max.x, voxelMesh.boundingBox.max.y, voxelMesh.boundingBox.max.z);
 
     // Voxelize lines
     for (const Line& line : lines)
     {
         glm::ivec3 index3D = GetVoxelIndex3D(line.end, voxelMesh.boundingBox.min, voxelSize);
-        uint32_t index1D = GetVoxelIndex1D(index3D, voxelMesh.gridResolution);
+        uint32_t index1D = GetVoxelIndex1D(index3D, voxelMesh.voxelGridResolution);
 
         if (index1D >= numVoxels)
         {
             continue; // TODO: Look at this case as this should never happen
         }
 
-        voxelMesh.voxels[index1D] = true;
+        voxels[voxelMesh.firstVoxel + index1D] = true;
+        voxelMesh.filledVoxelCount++;
     }
 
     return voxelMesh;
@@ -569,8 +571,6 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
     std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
-    std::vector<Mesh::Vertex> newVertexBuffer {};
-    std::vector<uint32_t> newIndexBuffer {};
 
     for (uint32_t meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
@@ -581,14 +581,12 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
 
         // Create DOTS mesh from line segments
         Mesh& newMesh = newMeshes[meshIndex];
-        newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newVertexBuffer, newIndexBuffer, 0.02f);
+        newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newModelCreation.vertexBuffer, newModelCreation.indexBuffer, 0.02f);
         newMesh.material = oldMesh.material;
     }
 
     // Update geometry information in the model
     sceneGraph.meshes = newMeshes;
-    newModelCreation.vertexBuffer = newVertexBuffer;
-    newModelCreation.indexBuffer = newIndexBuffer;
     return newModelCreation;
 }
 
@@ -617,12 +615,12 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
         constexpr float voxelSize = 0.1f;
 
         VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
-        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize);
+        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, voxelSize, newModelCreation.voxelGridBuffer);
         newMesh.material = oldMesh.material;
         newMesh.firstAabb = newModelCreation.aabbBuffer.size();
 
         // Generate debug AABBs
-        const std::vector<AABB> aabbs = GenerateAABBs(newMesh, voxelSize);
+        const std::vector<AABB> aabbs = GenerateAABBs(newMesh, newModelCreation.voxelGridBuffer, voxelSize);
         newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
 
         // Update hair information
@@ -656,8 +654,6 @@ ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
     std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
-    std::vector<Mesh::Vertex> newVertexBuffer {};
-    std::vector<uint32_t> newIndexBuffer {};
 
     for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
@@ -671,13 +667,11 @@ ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
 
         // Create mesh from curve segments
         Mesh& newMesh = newMeshes[meshIndex];
-        newMesh = GenerateMeshGeometryTubes(curves, newVertexBuffer, newIndexBuffer, 0.02f, 3, 3);
+        newMesh = GenerateMeshGeometryTubes(curves, newModelCreation.vertexBuffer, newModelCreation.indexBuffer, 0.02f, 3, 3);
         newMesh.material = oldMesh.material;
     }
 
     // Update geometry information in the model
     sceneGraph.meshes = newMeshes;
-    newModelCreation.vertexBuffer = newVertexBuffer;
-    newModelCreation.indexBuffer = newIndexBuffer;
     return newModelCreation;
 }

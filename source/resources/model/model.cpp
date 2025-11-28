@@ -50,13 +50,13 @@ uint32_t Mesh::GetIndicesPerFaceNum() const
 }
 
 Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+    :
+    sceneGraph(creation.sceneGraph),
+    vertexCount(creation.vertexBuffer.size()),
+    indexCount(creation.indexBuffer.size()),
+    curveCount(creation.curveBuffer.size()),
+    aabbCount(creation.aabbBuffer.size())
 {
-    sceneGraph = creation.sceneGraph;
-
-    vertexCount = creation.vertexBuffer.size();
-    indexCount = creation.indexBuffer.size();
-
-    // Upload to GPU
     if (vertexCount != 0 && indexCount != 0)
     {
         const size_t vertexBufferSize = sizeof(Mesh::Vertex) * vertexCount;
@@ -108,8 +108,6 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
         commands.SubmitAndWait();
     }
 
-    curveCount = creation.curveBuffer.size();
-
     if (curveCount != 0)
     {
         const size_t curveBufferSize = sizeof(Curve) * curveCount;
@@ -142,8 +140,6 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             });
         commands.SubmitAndWait();
     }
-
-    aabbCount = creation.aabbBuffer.size();
 
     if (aabbCount != 0)
     {

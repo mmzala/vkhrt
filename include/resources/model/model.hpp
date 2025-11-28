@@ -57,6 +57,7 @@ struct Mesh
     uint32_t indexCount {};
     uint32_t firstIndex {};
     uint32_t firstVertex {};
+
     ResourceHandle<Material> material {};
     AABB boundingBox {};
 
@@ -74,13 +75,15 @@ struct Hair
 
 struct VoxelMesh
 {
-    std::vector<bool> voxels {}; // TODO: Don't store after uploaded to GPU
-    AABB boundingBox {};
-    glm::ivec3 gridResolution {};
-    ResourceHandle<Material> material {};
+    glm::ivec3 voxelGridResolution {};
+    uint32_t firstVoxel {};
+    uint32_t filledVoxelCount {};
 
     uint32_t aabbCount {};
     uint32_t firstAabb {};
+
+    AABB boundingBox {};
+    ResourceHandle<Material> material {};
 };
 
 struct SceneGraph
@@ -103,6 +106,7 @@ struct ModelCreation
     std::vector<uint32_t> indexBuffer {};
 
     std::vector<Curve> curveBuffer {};
+    std::vector<bool> voxelGridBuffer {};
     std::vector<AABB> aabbBuffer {};
 
     std::shared_ptr<SceneGraph> sceneGraph {};
