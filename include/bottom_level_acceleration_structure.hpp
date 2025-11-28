@@ -1,8 +1,8 @@
 #pragma once
+#include <glm/mat4x4.hpp>
 #include "acceleration_structure.hpp"
 #include "resources/gpu_resources.hpp"
 #include "common.hpp"
-#include <glm/mat4x4.hpp>
 
 class VulkanContext;
 class BindlessResources;
@@ -13,6 +13,7 @@ enum class BLASType : uint8_t
 {
     eMesh,
     eHair,
+    eVoxels,
 };
 
 struct BLASInput
