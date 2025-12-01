@@ -468,8 +468,9 @@ uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxel
 
 std::array<uint8_t, 3> GetMajorAxes(const glm::vec3& v)
 {
+    glm::vec3 av = glm::abs(v);
     std::array<uint8_t, 3> axes = {0, 1, 2};
-    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b) { return v[a] > v[b]; });
+    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b) { return av[a] > av[b]; });
     return axes;
 }
 
@@ -507,7 +508,8 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
     spdlog::info("voxel grid res {}, {}, {}", voxelMesh.voxelGridResolution.x, voxelMesh.voxelGridResolution.y, voxelMesh.voxelGridResolution.z);
     spdlog::info("voxel bounds {}, {}, {} to {}, {}, {}", voxelMesh.boundingBox.min.x, voxelMesh.boundingBox.min.y, voxelMesh.boundingBox.min.z, voxelMesh.boundingBox.max.x, voxelMesh.boundingBox.max.y, voxelMesh.boundingBox.max.z);
 
-    // Voxelize lines
+    // Voxelize polylines as capsules
+    // Algorithm taken from 'Real-Time Rendering of Dynamic Line Sets using Voxel Ray Tracing' paper: https://arxiv.org/pdf/2510.09081
     for (const Line& line : lines)
     {
         glm::vec3 d = line.end - line.start;
@@ -522,8 +524,8 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
 
         // Get extended line segments to capture capsule ends
         glm::vec3 sr = s * hairRadius;
-        glm::vec3 vr0 = v0 * sr;
-        glm::vec3 vr1 = v1 * sr;
+        glm::vec3 vr0 = v0 - sr;
+        glm::vec3 vr1 = v1 + sr;
 
         // Get projected capsule radius on both minor axes
         float dn = glm::length(d);
@@ -539,14 +541,30 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
         while (t0 < tmax)
         {
             // Compute next intersection point
-            float t1 = glm::min(tmax, glm::floor(t0 + 1));
+            float t1 = glm::min(tmax, glm::floor(t0 + 1.0f));
             glm::vec3 p1 = vr0 + s * (t1 - tmin);
 
             // Define box to voxelize
-            glm::ivec3 index3D = GetVoxelIndex3D(worldPosition, mesh.boundingBox.min, voxelSize);
+            float jmin = glm::min(p0[a[1]], p1[a[1]]) - r1;
+            float jmax = glm::max(p0[a[1]], p1[a[1]]) + r1;
+            float kmin = glm::min(p0[a[2]], p1[a[2]]) - r2;
+            float kmax = glm::max(p0[a[2]], p1[a[2]]) + r2;
+
+            glm::vec3 worldMin = glm::vec3(t0, jmin, kmin);
+            glm::vec3 worldMax = glm::vec3(t0, jmax, kmax);
+
+            glm::ivec3 minIndex = GetVoxelIndex3D(worldMin, voxelMesh.boundingBox.min, voxelSize);
+            glm::ivec3 maxIndex = GetVoxelIndex3D(worldMax, voxelMesh.boundingBox.min, voxelSize);
 
             // Visit all voxels within box
-
+            for (int32_t j = minIndex.y; j <= maxIndex.y; ++j)
+            {
+                for (int32_t k = minIndex.z; k <= maxIndex.z; ++k)
+                {
+                    glm::ivec3 index = glm::ivec3(t0, j, k);
+                    FillVoxel(index, voxelMesh, voxels);
+                }
+            }
 
             // Move to next intersection point
             t0 = t1;
