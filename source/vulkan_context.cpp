@@ -144,6 +144,12 @@ uint64_t VulkanContext::GetBufferDeviceAddress(vk::Buffer buffer) const
     return _device.getBufferAddressKHR(&bufferDeviceAI, _dldi);
 }
 
+bool VulkanContext::IsExtensionSupported(const std::string& extension) const
+{
+    std::vector<vk::ExtensionProperties> availableExtensions = _physicalDevice.enumerateDeviceExtensionProperties();
+    return std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop){ return prop.extensionName == extension; }) != availableExtensions.end();
+}
+
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
 {
     vk::ApplicationInfo appInfo {};

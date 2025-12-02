@@ -21,6 +21,7 @@ private:
         uint32_t trianglePrimitivesCount;
         uint32_t curvePrimitivesCount;
     } _sceneInformation {};
+    bool _lssSupported = false;
 
     const Application& _application;
     std::shared_ptr<VulkanContext> _vulkanContext;

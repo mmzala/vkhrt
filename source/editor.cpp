@@ -15,6 +15,7 @@ Editor::Editor(const Application& application, const std::shared_ptr<VulkanConte
         _sceneInformation.trianglePrimitivesCount += model->vertexCount;
         _sceneInformation.curvePrimitivesCount += model->curveCount;
     }
+    _lssSupported = _vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 }
 
 void Editor::Update()
@@ -27,6 +28,7 @@ void Editor::Update()
     vk::PhysicalDeviceProperties physicalDeviceProperties = _vulkanContext->PhysicalDevice().getProperties();
     ImGui::Text("GPU: %s", physicalDeviceProperties.deviceName.data());
     ImGui::Text("Frame Time: %fms", _application.GetFrameTime());
+    ImGui::Text("LSS Supported: %s", _lssSupported ? "Yes" : "No");
 
     ImGui::Separator();
 

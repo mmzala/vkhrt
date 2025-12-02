@@ -46,6 +46,7 @@ public:
 
     [[nodiscard]] vk::PhysicalDeviceRayTracingPipelinePropertiesKHR RayTracingPipelineProperties() const;
     [[nodiscard]] uint64_t GetBufferDeviceAddress(vk::Buffer buffer) const;
+    [[nodiscard]] bool IsExtensionSupported(const std::string& extension) const;
 
 private:
     vk::Instance _instance;
