@@ -167,8 +167,8 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
 
     if (lssPositionCount != 0 && lssRadiusCount != 0)
     {
-        const size_t positionBufferSize = sizeof(glm::vec3) * curveCount;
-        const size_t radiusBufferSize = sizeof(float) * aabbCount;
+        const size_t positionBufferSize = sizeof(glm::vec3) * lssPositionCount;
+        const size_t radiusBufferSize = sizeof(float) * lssRadiusCount;
 
         // Staging buffers
         BufferCreation positionStagingBufferCreation {};
@@ -178,7 +178,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetIsMappable(true)
             .SetSize(positionBufferSize);
         Buffer positionStagingBuffer(positionStagingBufferCreation, vulkanContext);
-        memcpy(positionStagingBuffer.mappedPtr, creation.curveBuffer.data(), positionBufferSize);
+        memcpy(positionStagingBuffer.mappedPtr, creation.lssPositionBuffer.data(), positionBufferSize);
 
         BufferCreation radiusStagingBufferCreation {};
         radiusStagingBufferCreation.SetName(sceneGraph->sceneName + " - LSS Radius Staging Buffer")
@@ -187,7 +187,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetIsMappable(true)
             .SetSize(radiusBufferSize);
         Buffer radiusStagingBuffer(radiusStagingBufferCreation, vulkanContext);
-        memcpy(radiusStagingBuffer.mappedPtr, creation.aabbBuffer.data(), radiusBufferSize);
+        memcpy(radiusStagingBuffer.mappedPtr, creation.lssRadiusBuffer.data(), radiusBufferSize);
 
         // GPU buffers
         vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;

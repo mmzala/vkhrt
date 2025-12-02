@@ -358,6 +358,12 @@ void Renderer::InitializeRayTracingPipeline()
     vk::PipelineLibraryCreateInfoKHR libraryCreateInfo {};
     libraryCreateInfo.libraryCount = 0;
 
+    vk::PipelineCreateFlags2CreateInfoKHR pipelineFlags {};
+    if (_vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME))
+    {
+        pipelineFlags.flags = vk::PipelineCreateFlagBits2KHR::eRayTracingAllowSpheresAndLinearSweptSpheresNV;
+    }
+
     vk::RayTracingPipelineCreateInfoKHR pipelineCreateInfo {};
     pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStagesCreateInfo.size());
     pipelineCreateInfo.pStages = shaderStagesCreateInfo.data();
@@ -369,6 +375,7 @@ void Renderer::InitializeRayTracingPipeline()
     pipelineCreateInfo.layout = _pipelineLayout;
     pipelineCreateInfo.basePipelineHandle = nullptr;
     pipelineCreateInfo.basePipelineIndex = 0;
+    pipelineCreateInfo.pNext = &pipelineFlags;
 
     _pipeline = _vulkanContext->Device().createRayTracingPipelineKHR(nullptr, nullptr, pipelineCreateInfo, nullptr, _vulkanContext->Dldi()).value;
 
