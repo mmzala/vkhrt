@@ -243,11 +243,11 @@ void VulkanContext::InitializeDevice()
 
     vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDescriptorIndexingFeatures,
         vk::PhysicalDeviceScalarBlockLayoutFeatures, vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR,
-        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR, vk::PhysicalDeviceShaderClockFeaturesKHR>
-        structureChain;
+        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR, vk::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV>
+        structureChain {};
 
-    auto& shaderClockFeatures = structureChain.get<vk::PhysicalDeviceShaderClockFeaturesKHR>();
-    shaderClockFeatures.shaderSubgroupClock = true;
+    auto& lssFeatures = structureChain.get<vk::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV>();
+    lssFeatures.linearSweptSpheres = IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 
     auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
     rayTracingPipelineFeatures.rayTracingPipeline = true;
