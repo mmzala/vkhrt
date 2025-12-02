@@ -121,5 +121,10 @@ struct Model
     uint32_t curveCount {};
     uint32_t aabbCount {};
 
+    std::unique_ptr<Buffer> lssPositionBuffer {};
+    std::unique_ptr<Buffer> lssRadiusBuffer {};
+    uint32_t lssPositionCount {};
+    uint32_t lssRadiusCount {};
+
     std::shared_ptr<SceneGraph> sceneGraph {};
 };
