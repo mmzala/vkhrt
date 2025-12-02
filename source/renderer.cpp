@@ -561,6 +561,47 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     return output;
 }
 
+BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const LSSMesh& lssMesh, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    BLASInput output {};
+    output.type = BLASType::eMesh;
+    output.transform = node.GetWorldMatrix();
+
+    vk::DeviceOrHostAddressConstKHR positionBufferDeviceAddress {};
+    vk::DeviceOrHostAddressConstKHR radiusBufferDeviceAddress {};
+    positionBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->lssPositionBuffer->buffer) + lssMesh.firstVertex * sizeof(glm::vec3);
+    radiusBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->lssRadiusBuffer->buffer) + lssMesh.firstVertex * sizeof(float);
+
+    vk::AccelerationStructureGeometryLinearSweptSpheresDataNV& lssData = output.lssInfo;
+    lssData.vertexFormat = vk::Format::eR32G32B32Sfloat;
+    lssData.vertexData = positionBufferDeviceAddress;
+    lssData.vertexStride = sizeof(glm::vec3);
+    lssData.radiusFormat = vk::Format::eR32Sfloat;
+    lssData.radiusData = radiusBufferDeviceAddress;
+    lssData.radiusStride = sizeof(float);
+    lssData.indexType = vk::IndexType::eNoneNV;
+    lssData.indexingMode = vk::RayTracingLssIndexingModeNV::eList;
+    lssData.endCapsMode = vk::RayTracingLssPrimitiveEndCapsModeNV::eNone;
+
+    vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = output.geometry;
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eLinearSweptSpheresNV;
+    accelerationStructureGeometry.pNext = &output.lssInfo;
+
+    const uint32_t primitiveCount = lssMesh.vertexCount / 2;
+
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    buildRangeInfo.primitiveCount = primitiveCount;
+    buildRangeInfo.primitiveOffset = 0;
+    buildRangeInfo.firstVertex = 0;
+    buildRangeInfo.transformOffset = 0;
+
+    GeometryNodeCreation& nodeCreation = output.node;
+    nodeCreation.material = lssMesh.material;
+
+    return output;
+}
+
 void Renderer::InitializeBLAS()
 {
     for (const auto& model : _models)
@@ -578,6 +619,12 @@ void Renderer::InitializeBLAS()
             for (const auto hair : node.hairs)
             {
                 BLASInput input = InitializeBLASInput(model, node, sceneGraph->hairs[hair], _vulkanContext);
+                _blases.emplace_back(input, _bindlessResources, _vulkanContext);
+            }
+
+            for (const auto lssMesh : node.lssMeshes)
+            {
+                BLASInput input = InitializeBLASInput(model, node, sceneGraph->lssMeshes[lssMesh], _vulkanContext);
                 _blases.emplace_back(input, _bindlessResources, _vulkanContext);
             }
         }
