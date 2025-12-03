@@ -588,7 +588,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     lssData.radiusStride = sizeof(float);
     lssData.indexType = vk::IndexType::eNoneNV;
     lssData.indexingMode = vk::RayTracingLssIndexingModeNV::eList;
-    lssData.endCapsMode = vk::RayTracingLssPrimitiveEndCapsModeNV::eNone;
+    lssData.endCapsMode = vk::RayTracingLssPrimitiveEndCapsModeNV::eChained;
 
     vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = output.geometry;
     accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;

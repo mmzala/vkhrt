@@ -288,7 +288,7 @@ LSSMesh GenerateLinearSweptSpheres(const std::vector<Line>& lines, std::vector<g
         radiusBuffer[indexOffset] = lssRadius;
         radiusBuffer[indexOffset + 1] = lssRadius;
 
-        indexOffset++;
+        indexOffset += 2;
     }
 
     return mesh;
