@@ -340,6 +340,6 @@ std::shared_ptr<Model> ModelLoader::ProcessModel(const ModelCreation& modelCreat
     }
 
     // Create mesh from hair strands
-    ModelCreation newModelCreation = ProcessHairLSS(modelCreation);
+    ModelCreation newModelCreation = _vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME) ? ProcessHairLSS(modelCreation) : ProcessHairDOTS(modelCreation);
     return std::make_unique<Model>(newModelCreation, _vulkanContext);
 }

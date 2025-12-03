@@ -545,7 +545,7 @@ ModelCreation ProcessHairLSS(const ModelCreation& modelCreation)
         // Create line segments from hair lines
         const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
 
-        // Create DOTS mesh from line segments
+        // Create LSS mesh from line segments
         LSSMesh& lssMesh = sceneGraph.lssMeshes[meshIndex];
         lssMesh = GenerateLinearSweptSpheres(lines, newModelCreation.lssPositionBuffer, newModelCreation.lssRadiusBuffer, 0.02f);
         lssMesh.material = oldMesh.material;
