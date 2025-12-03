@@ -69,7 +69,7 @@ private:
         "VK_LAYER_KHRONOS_validation"
     };
 
-    const std::vector<const char*> _deviceExtensions = {
+    const std::vector<const char*> _requiredDeviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
@@ -82,6 +82,9 @@ private:
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_EXT_SCALAR_BLOCK_LAYOUT_EXTENSION_NAME,
         VK_KHR_SHADER_CLOCK_EXTENSION_NAME,
+    };
+
+    const std::vector<std::string> _optionalDeviceExtensions = {
         VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME,
     };
 
@@ -95,5 +98,6 @@ private:
     [[nodiscard]] bool AreValidationLayersSupported() const;
     [[nodiscard]] std::vector<const char*> GetRequiredInstanceExtensions(const VulkanInitInfo& initInfo) const;
     [[nodiscard]] uint32_t RateDeviceSuitability(const vk::PhysicalDevice& deviceToRate) const;
-    [[nodiscard]] bool AreExtensionsSupported(const vk::PhysicalDevice& deviceToCheckSupport) const;
+    [[nodiscard]] bool AreRequieredExtensionsSupported(const vk::PhysicalDevice& deviceToCheckSupport) const;
+    [[nodiscard]] std::vector<const char*> GetSupportedOptionalExtensions() const;
 };
