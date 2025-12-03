@@ -147,7 +147,9 @@ uint64_t VulkanContext::GetBufferDeviceAddress(vk::Buffer buffer) const
 bool VulkanContext::IsExtensionSupported(const std::string& extension) const
 {
     std::vector<vk::ExtensionProperties> availableExtensions = _physicalDevice.enumerateDeviceExtensionProperties();
-    return std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop){ return prop.extensionName == extension; }) != availableExtensions.end();
+    return std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop)
+               { return prop.extensionName == extension; })
+        != availableExtensions.end();
 }
 
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
@@ -429,7 +431,9 @@ std::vector<const char*> VulkanContext::GetSupportedOptionalExtensions() const
 
     for (const auto& extension : _optionalDeviceExtensions)
     {
-        bool extensionSupported = std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop){ return prop.extensionName == extension; }) != availableExtensions.end();
+        bool extensionSupported = std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop)
+                                      { return prop.extensionName == extension; })
+            != availableExtensions.end();
 
         if (extensionSupported)
         {
