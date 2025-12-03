@@ -86,6 +86,7 @@ private:
 
     const std::vector<std::string> _optionalDeviceExtensions = {
         VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE_5_EXTENSION_NAME, // All GPUs supporting LSS also support this
     };
 
     void InitializeInstance(const VulkanInitInfo& initInfo);
