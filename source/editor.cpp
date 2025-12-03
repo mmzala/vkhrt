@@ -14,6 +14,7 @@ Editor::Editor(const Application& application, const std::shared_ptr<VulkanConte
     {
         _sceneInformation.trianglePrimitivesCount += model->vertexCount;
         _sceneInformation.curvePrimitivesCount += model->curveCount;
+        _sceneInformation.lssPrimitivesCount += model->lssPositionCount / 2;
     }
     _lssSupported = _vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 }
@@ -36,6 +37,7 @@ void Editor::Update()
     ImGui::Indent(INDENT_SPACING);
     ImGui::Text("Triangle Count: %u", _sceneInformation.trianglePrimitivesCount);
     ImGui::Text("Curve Count: %u", _sceneInformation.curvePrimitivesCount);
+    ImGui::Text("LSS Count: %u", _sceneInformation.lssPrimitivesCount);
     ImGui::Indent(-INDENT_SPACING);
 
     ImGui::End();
