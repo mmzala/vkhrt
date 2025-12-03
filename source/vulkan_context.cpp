@@ -144,6 +144,14 @@ uint64_t VulkanContext::GetBufferDeviceAddress(vk::Buffer buffer) const
     return _device.getBufferAddressKHR(&bufferDeviceAI, _dldi);
 }
 
+bool VulkanContext::IsExtensionSupported(const std::string& extension) const
+{
+    std::vector<vk::ExtensionProperties> availableExtensions = _physicalDevice.enumerateDeviceExtensionProperties();
+    return std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop)
+               { return prop.extensionName == extension; })
+        != availableExtensions.end();
+}
+
 void VulkanContext::InitializeInstance(const VulkanInitInfo& initInfo)
 {
     vk::ApplicationInfo appInfo {};
@@ -237,11 +245,11 @@ void VulkanContext::InitializeDevice()
 
     vk::StructureChain<vk::DeviceCreateInfo, vk::PhysicalDeviceFeatures2, vk::PhysicalDeviceSynchronization2Features, vk::PhysicalDeviceDescriptorIndexingFeatures,
         vk::PhysicalDeviceScalarBlockLayoutFeatures, vk::PhysicalDeviceBufferDeviceAddressFeatures, vk::PhysicalDeviceAccelerationStructureFeaturesKHR,
-        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR, vk::PhysicalDeviceShaderClockFeaturesKHR>
-        structureChain;
+        vk::PhysicalDeviceRayTracingPipelineFeaturesKHR, vk::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV>
+        structureChain {};
 
-    auto& shaderClockFeatures = structureChain.get<vk::PhysicalDeviceShaderClockFeaturesKHR>();
-    shaderClockFeatures.shaderSubgroupClock = true;
+    auto& lssFeatures = structureChain.get<vk::PhysicalDeviceRayTracingLinearSweptSpheresFeaturesNV>();
+    lssFeatures.linearSweptSpheres = IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 
     auto& rayTracingPipelineFeatures = structureChain.get<vk::PhysicalDeviceRayTracingPipelineFeaturesKHR>();
     rayTracingPipelineFeatures.rayTracingPipeline = true;
@@ -268,8 +276,11 @@ void VulkanContext::InitializeDevice()
     createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
     createInfo.pEnabledFeatures = nullptr;
-    createInfo.enabledExtensionCount = static_cast<uint32_t>(_deviceExtensions.size());
-    createInfo.ppEnabledExtensionNames = _deviceExtensions.data();
+
+    std::vector<const char*> extensions = GetSupportedOptionalExtensions();
+    extensions.insert(extensions.begin(), _requiredDeviceExtensions.begin(), _requiredDeviceExtensions.end());
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
+    createInfo.ppEnabledExtensionNames = extensions.data();
 
     VkCheckResult(_physicalDevice.createDevice(&createInfo, nullptr, &_device), "Failed creating a logical device!");
 
@@ -369,7 +380,7 @@ uint32_t VulkanContext::RateDeviceSuitability(const vk::PhysicalDevice& deviceTo
     }
 
     // Failed if the extensions needed are not supported
-    if (!AreExtensionsSupported(deviceToRate))
+    if (!AreRequieredExtensionsSupported(deviceToRate))
     {
         return 0;
     }
@@ -401,14 +412,34 @@ uint32_t VulkanContext::RateDeviceSuitability(const vk::PhysicalDevice& deviceTo
     return score;
 }
 
-bool VulkanContext::AreExtensionsSupported(const vk::PhysicalDevice& deviceToCheckSupport) const
+bool VulkanContext::AreRequieredExtensionsSupported(const vk::PhysicalDevice& deviceToCheckSupport) const
 {
     std::vector<vk::ExtensionProperties> availableExtensions = deviceToCheckSupport.enumerateDeviceExtensionProperties();
-    std::set<std::string> requiredExtensions { _deviceExtensions.begin(), _deviceExtensions.end() };
+    std::set<std::string> requiredExtensions { _requiredDeviceExtensions.begin(), _requiredDeviceExtensions.end() };
     for (const auto& extension : availableExtensions)
     {
         requiredExtensions.erase(extension.extensionName);
     }
 
     return requiredExtensions.empty();
+}
+
+std::vector<const char*> VulkanContext::GetSupportedOptionalExtensions() const
+{
+    std::vector<const char*> availableOptionalExtensions {};
+    std::vector<vk::ExtensionProperties> availableExtensions = _physicalDevice.enumerateDeviceExtensionProperties();
+
+    for (const auto& extension : _optionalDeviceExtensions)
+    {
+        bool extensionSupported = std::find_if(availableExtensions.begin(), availableExtensions.end(), [&](const vk::ExtensionProperties prop)
+                                      { return prop.extensionName == extension; })
+            != availableExtensions.end();
+
+        if (extensionSupported)
+        {
+            availableOptionalExtensions.push_back(extension.c_str());
+        }
+    }
+
+    return availableOptionalExtensions;
 }

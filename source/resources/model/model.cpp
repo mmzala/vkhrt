@@ -161,4 +161,58 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
                 VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize); });
         commands.SubmitAndWait();
     }
+
+    lssPositionCount = creation.lssPositionBuffer.size();
+    lssRadiusCount = creation.lssRadiusBuffer.size();
+
+    if (lssPositionCount != 0 && lssRadiusCount != 0)
+    {
+        const size_t positionBufferSize = sizeof(glm::vec3) * lssPositionCount;
+        const size_t radiusBufferSize = sizeof(float) * lssRadiusCount;
+
+        // Staging buffers
+        BufferCreation positionStagingBufferCreation {};
+        positionStagingBufferCreation.SetName(sceneGraph->sceneName + " - LSS Position Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(positionBufferSize);
+        Buffer positionStagingBuffer(positionStagingBufferCreation, vulkanContext);
+        memcpy(positionStagingBuffer.mappedPtr, creation.lssPositionBuffer.data(), positionBufferSize);
+
+        BufferCreation radiusStagingBufferCreation {};
+        radiusStagingBufferCreation.SetName(sceneGraph->sceneName + " - LSS Radius Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(radiusBufferSize);
+        Buffer radiusStagingBuffer(radiusStagingBufferCreation, vulkanContext);
+        memcpy(radiusStagingBuffer.mappedPtr, creation.lssRadiusBuffer.data(), radiusBufferSize);
+
+        // GPU buffers
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
+        BufferCreation positionBufferCreation {};
+        positionBufferCreation.SetName(sceneGraph->sceneName + " - LSS Position Buffer")
+            .SetUsageFlags(bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(positionBufferSize);
+        lssPositionBuffer = std::make_unique<Buffer>(positionBufferCreation, vulkanContext);
+
+        BufferCreation radiusBufferCreation {};
+        radiusBufferCreation.SetName(sceneGraph->sceneName + " - LSS Radius Buffer")
+            .SetUsageFlags(bufferUsage)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_GPU_ONLY)
+            .SetIsMappable(false)
+            .SetSize(radiusBufferSize);
+        lssRadiusBuffer = std::make_unique<Buffer>(radiusBufferCreation, vulkanContext);
+
+        SingleTimeCommands commands(vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            {
+                VkCopyBufferToBuffer(commandBuffer, positionStagingBuffer.buffer, lssPositionBuffer->buffer, positionBufferSize);
+                VkCopyBufferToBuffer(commandBuffer, radiusStagingBuffer.buffer, lssRadiusBuffer->buffer, radiusBufferSize); });
+        commands.SubmitAndWait();
+    }
 }

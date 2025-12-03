@@ -8,10 +8,9 @@ struct Vertex
 struct Triangle
 {
     Vertex vertices[3];
-    vec3 position;
-    vec3 normal;
-    vec2 texCoord;
 };
+
+#define GeometrySample Vertex
 
 #include "curve.glsl"
 #include "cone.glsl"

@@ -1,6 +1,7 @@
 #pragma once
 #include <vulkan/vulkan.hpp>
 #include <glm/mat4x4.hpp>
+#include <memory>
 #include "vulkan_context.hpp"
 
 constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 3;

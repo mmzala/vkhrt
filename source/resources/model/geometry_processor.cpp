@@ -267,6 +267,33 @@ Mesh GenerateDisjointOrthogonalTriangleStrips(const std::vector<Line>& lines, st
     return mesh;
 }
 
+LSSMesh GenerateLinearSweptSpheres(const std::vector<Line>& lines, std::vector<glm::vec3>& positionBuffer, std::vector<float>& radiusBuffer, float radius = 0.02f)
+{
+    LSSMesh mesh {};
+    mesh.firstVertex = positionBuffer.size(); // Should be the same for radius buffer, so we only track positions buffer
+
+    uint32_t numVertices = lines.size() * 2;
+    mesh.vertexCount = numVertices;
+
+    positionBuffer.resize(positionBuffer.size() + numVertices);
+    radiusBuffer.resize(radiusBuffer.size() + numVertices);
+
+    uint32_t indexOffset = 0;
+    float lssRadius = glm::max(radius, 0.001f);
+
+    for (const Line& line : lines)
+    {
+        positionBuffer[indexOffset] = line.start;
+        positionBuffer[indexOffset + 1] = line.end;
+        radiusBuffer[indexOffset] = lssRadius;
+        radiusBuffer[indexOffset + 1] = lssRadius;
+
+        indexOffset += 2;
+    }
+
+    return mesh;
+}
+
 Mesh GenerateMeshGeometryCubes(const std::vector<Line>& lines, std::vector<Mesh::Vertex>& vertexBuffer, std::vector<uint32_t>& indexBuffer, float cubeSize = 0.02f)
 {
     Mesh mesh {};
@@ -353,7 +380,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
             for (uint32_t j = 0; j < numRadialSamples; j++)
             {
                 float theta = (2.0f * glm::pi<float>() * j) / static_cast<float>(numRadialSamples);
-                glm::vec3 offset = radius * (cos(theta) * n + sin(theta) * b);
+                glm::vec3 offset = radius * (glm::cos(theta) * n + glm::sin(theta) * b);
                 glm::vec3 vertex = point + offset;
 
                 vertexBuffer.push_back({ vertex });
@@ -492,6 +519,47 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
     sceneGraph.meshes = newMeshes;
     newModelCreation.vertexBuffer = newVertexBuffer;
     newModelCreation.indexBuffer = newIndexBuffer;
+    return newModelCreation;
+}
+
+ModelCreation ProcessHairLSS(const ModelCreation& modelCreation)
+{
+    const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+    if (it != modelCreation.sceneGraph->meshes.end())
+    {
+        spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
+        return modelCreation;
+    }
+
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    sceneGraph.lssMeshes.resize(sceneGraph.meshes.size());
+
+    for (uint32_t meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        // Create line segments from hair lines
+        const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
+
+        // Create LSS mesh from line segments
+        LSSMesh& lssMesh = sceneGraph.lssMeshes[meshIndex];
+        lssMesh = GenerateLinearSweptSpheres(lines, newModelCreation.lssPositionBuffer, newModelCreation.lssRadiusBuffer, 0.02f);
+        lssMesh.material = oldMesh.material;
+    }
+
+    // Update scene graph to use lss
+    sceneGraph.meshes.clear();
+
+    for (Node& node : sceneGraph.nodes)
+    {
+        node.lssMeshes = node.meshes; // Since we don't support models with mixed hair and mesh geometry for now, we just copy the information
+        node.meshes.clear();
+    }
+
     return newModelCreation;
 }
 
