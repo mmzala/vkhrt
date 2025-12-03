@@ -81,6 +81,6 @@ void main()
         albedo *= texture(textures[nonuniformEXT(material.albedoMapIndex)], geometry.texCoord);
     }
 
-    payload.hitValue = geometry.normal * 0.5f + 0.5f;
+    payload.hitValue = GetDebugColor(gl_PrimitiveID);
     return;
 }
