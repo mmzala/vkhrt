@@ -82,5 +82,4 @@ void main()
     }
 
     payload.hitValue = GetDebugColor(gl_PrimitiveID);
-    return;
 }
