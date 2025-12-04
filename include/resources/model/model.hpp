@@ -11,6 +11,7 @@ struct Node
     std::vector<uint32_t> meshes {};
     std::vector<uint32_t> hairs {};
     std::vector<uint32_t> voxelMeshes {};
+    std::vector<uint32_t> lssMeshes {};
 
     [[nodiscard]] glm::mat4 GetWorldMatrix() const;
 };
@@ -64,6 +65,7 @@ struct Mesh
     [[nodiscard]] uint32_t GetIndicesPerFaceNum() const;
 };
 
+// TODO: Rename to CurvesMesh
 struct Hair
 {
     uint32_t curveCount {};
@@ -83,6 +85,13 @@ struct VoxelMesh
     uint32_t firstAabb {};
 
     AABB boundingBox {};
+	ResourceHandle<Material> material {};
+};
+
+struct LSSMesh
+{
+    uint32_t vertexCount {};
+    uint32_t firstVertex {};
     ResourceHandle<Material> material {};
 };
 
@@ -96,6 +105,7 @@ struct SceneGraph
     std::vector<Mesh> meshes {};
     std::vector<Hair> hairs {};
     std::vector<VoxelMesh> voxelMeshes {};
+    std::vector<LSSMesh> lssMeshes {};
     std::vector<ResourceHandle<Image>> textures {};
     std::vector<ResourceHandle<Material>> materials {};
 };
@@ -108,6 +118,9 @@ struct ModelCreation
     std::vector<Curve> curveBuffer {};
     std::vector<bool> voxelGridBuffer {};
     std::vector<AABB> aabbBuffer {};
+
+    std::vector<glm::vec3> lssPositionBuffer {};
+    std::vector<float> lssRadiusBuffer {};
 
     std::shared_ptr<SceneGraph> sceneGraph {};
 };
@@ -125,6 +138,11 @@ struct Model
     std::unique_ptr<Buffer> aabbBuffer {};
     uint32_t curveCount {};
     uint32_t aabbCount {};
+
+    std::unique_ptr<Buffer> lssPositionBuffer {};
+    std::unique_ptr<Buffer> lssRadiusBuffer {};
+    uint32_t lssPositionCount {};
+    uint32_t lssRadiusCount {};
 
     std::shared_ptr<SceneGraph> sceneGraph {};
 };

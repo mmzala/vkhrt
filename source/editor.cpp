@@ -13,6 +13,7 @@ Editor::Editor(const Application& application, const std::shared_ptr<VulkanConte
     {
         _sceneInformation.trianglePrimitivesCount += model->vertexCount;
         _sceneInformation.curvePrimitivesCount += model->curveCount;
+        _sceneInformation.lssPrimitivesCount += model->lssPositionCount / 2;
 
         for (const Node& node : model->sceneGraph->nodes)
         {
@@ -22,6 +23,7 @@ Editor::Editor(const Application& application, const std::shared_ptr<VulkanConte
             }
         }
     }
+    _lssSupported = _vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 }
 
 void Editor::Update()
@@ -34,6 +36,7 @@ void Editor::Update()
     vk::PhysicalDeviceProperties physicalDeviceProperties = _vulkanContext->PhysicalDevice().getProperties();
     ImGui::Text("GPU: %s", physicalDeviceProperties.deviceName.data());
     ImGui::Text("Frame Time: %fms", _application.GetFrameTime());
+    ImGui::Text("LSS Supported: %s", _lssSupported ? "Yes" : "No");
 
     ImGui::Separator();
 
@@ -42,6 +45,7 @@ void Editor::Update()
     ImGui::Text("Triangle Count: %u", _sceneInformation.trianglePrimitivesCount);
     ImGui::Text("Curve Count: %u", _sceneInformation.curvePrimitivesCount);
     ImGui::Text("Filled Voxel Count: %u", _sceneInformation.filledVoxelPrimitivesCount);
+    ImGui::Text("LSS Count: %u", _sceneInformation.lssPrimitivesCount);
     ImGui::Indent(-INDENT_SPACING);
 
     ImGui::End();

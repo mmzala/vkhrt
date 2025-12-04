@@ -23,6 +23,9 @@ struct BLASInput
     GeometryNodeCreation node {};
     vk::AccelerationStructureGeometryKHR geometry {};
     vk::AccelerationStructureBuildRangeInfoKHR info {};
+
+    // Optional structure used to give lss data as it isn't considered geometry for AccelerationStructureBuildRangeInfoKHR, but as a next structure
+    vk::AccelerationStructureGeometryLinearSweptSpheresDataNV lssInfo {};
 };
 
 class BottomLevelAccelerationStructure : public AccelerationStructure
