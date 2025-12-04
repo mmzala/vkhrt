@@ -615,18 +615,19 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eAabbs;
     accelerationStructureGeometry.geometry.aabbs = aabbData;
 
-    const uint32_t primitiveCount = lssMesh.vertexCount / 2;
+    const uint32_t primitiveCount = voxelMesh.aabbCount;
 
-	vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
     buildRangeInfo.primitiveCount = primitiveCount;
     buildRangeInfo.primitiveOffset = 0;
     buildRangeInfo.firstVertex = 0;
     buildRangeInfo.transformOffset = 0;
 
     GeometryNodeCreation& nodeCreation = output.node;
-	nodeCreation.material = lssMesh.material;
+    nodeCreation.primitiveBufferDeviceAddress = vk::DeviceAddress {}; // TODO: Accel structure
+    nodeCreation.material = voxelMesh.material;
 
-	return output;
+    return output;
 }
 
 BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const LSSMesh& lssMesh, const std::shared_ptr<VulkanContext>& vulkanContext)
@@ -656,17 +657,16 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eLinearSweptSpheresNV;
     accelerationStructureGeometry.pNext = &output.lssInfo;
 
-	const uint32_t primitiveCount = voxelMesh.aabbCount;
+    const uint32_t primitiveCount = lssMesh.vertexCount / 2;
 
-	vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
     buildRangeInfo.primitiveCount = primitiveCount;
     buildRangeInfo.primitiveOffset = 0;
     buildRangeInfo.firstVertex = 0;
     buildRangeInfo.transformOffset = 0;
 
-	GeometryNodeCreation& nodeCreation = output.node;
-    nodeCreation.primitiveBufferDeviceAddress = vk::DeviceAddress {}; // TODO: Accel structure
-    nodeCreation.material = voxelMesh.material;
+    GeometryNodeCreation& nodeCreation = output.node;
+    nodeCreation.material = lssMesh.material;
 
     return output;
 }
