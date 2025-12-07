@@ -4,7 +4,10 @@ A work-in-progress hair ray-tracer built using Vulkan and the `VK_KHR_ray_tracin
 
 <p align="center" width="100%">
   <img width="816" height="932" src="https://github.com/user-attachments/assets/df03d8a1-ac92-4359-817f-122ba89104a0">
+  <div align="center"> <i> Rendered using the Phantom Ray Hair Intersector </i> </div>
 </p>
+
+<br></br>
 
 The project currently supports 3 out of 4 planned hair rendering techniques.
 
