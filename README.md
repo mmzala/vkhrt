@@ -2,7 +2,9 @@
 
 A work-in-progress hair ray-tracer built using Vulkan and the `VK_KHR_ray_tracing_pipeline` extension with the aim to compare different hair geometry rendering algorithms. The renderer supports a wide range of 3D hair model formats using polylines via Assimp, enabling the import of virtually any format supported by the library.
 
-<img width="816" height="932" alt="image" src="https://github.com/user-attachments/assets/df03d8a1-ac92-4359-817f-122ba89104a0" />
+<p align="center" width="100%">
+  <img width="816" height="932" src="https://github.com/user-attachments/assets/df03d8a1-ac92-4359-817f-122ba89104a0">
+</p>
 
 The project currently supports 3 out of 4 planned hair rendering techniques.
 
