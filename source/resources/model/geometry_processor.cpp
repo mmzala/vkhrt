@@ -568,17 +568,18 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
         while (t0 < tmax)
         {
             // Compute next intersection point
-            float t1 = glm::min(tmax, glm::floor(t0 + 1.0f));
+            float t1 = glm::min(tmax, t0 + voxelSize); // TODO: Check if step is correct (voxelsize should be multiplied by s?)
             glm::vec3 p1 = vr0 + s * (t1 - tmin);
 
             // Define box to voxelize
-            float jmin = glm::min(p0[a[1]], p1[a[1]]) - r1;
-            float jmax = glm::max(p0[a[1]], p1[a[1]]) + r1;
-            float kmin = glm::min(p0[a[2]], p1[a[2]]) - r2;
-            float kmax = glm::max(p0[a[2]], p1[a[2]]) + r2;
+            glm::vec3 worldMin = glm::min(p0, p1);
+            glm::vec3 worldMax = glm::max(p0, p1);
 
-            glm::vec3 worldMin = glm::vec3(t0, jmin, kmin);
-            glm::vec3 worldMax = glm::vec3(t0, jmax, kmax);
+            worldMin[a[1]] -= r1;
+            worldMin[a[2]] -= r2;
+
+            worldMax[a[1]] += r1;
+            worldMax[a[2]] += r2;
 
             glm::ivec3 minIndex = GetVoxelIndex3D(worldMin, voxelMesh.boundingBox.min, voxelSize);
             glm::ivec3 maxIndex = GetVoxelIndex3D(worldMax, voxelMesh.boundingBox.min, voxelSize);
@@ -588,7 +589,7 @@ VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBoun
             {
                 for (int32_t k = minIndex.z; k <= maxIndex.z; ++k)
                 {
-                    glm::ivec3 index = glm::ivec3(t0, j, k);
+                    glm::ivec3 index = glm::ivec3(minIndex.x, j, k);
                     FillVoxel(index, voxelMesh, voxels);
                 }
             }
