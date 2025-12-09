@@ -29,7 +29,7 @@ void TopLevelAccelerationStructure::InitializeStructure(const std::vector<Bottom
         accelerationStructureInstance.transform = transform;
         accelerationStructureInstance.instanceCustomIndex = accelerationStructureInstances.size() - 1;
         accelerationStructureInstance.mask = 0xFF;
-        accelerationStructureInstance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(blas.Type()); // 0 for triangle meshes and 1 for hair strands
+        accelerationStructureInstance.instanceShaderBindingTableRecordOffset = static_cast<uint32_t>(blas.Type());
 
         vk::AccelerationStructureDeviceAddressInfoKHR blasDeviceAddress {};
         blasDeviceAddress.accelerationStructure = blas.Structure();

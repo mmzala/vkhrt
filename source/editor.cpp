@@ -9,12 +9,19 @@ Editor::Editor(const Application& application, const std::shared_ptr<VulkanConte
     , _vulkanContext(vulkanContext)
     , _renderer(renderer)
 {
-    _sceneInformation = {};
     for (const std::shared_ptr<Model>& model : _renderer->GetModels())
     {
         _sceneInformation.trianglePrimitivesCount += model->vertexCount;
         _sceneInformation.curvePrimitivesCount += model->curveCount;
         _sceneInformation.lssPrimitivesCount += model->lssPositionCount / 2;
+
+        for (const Node& node : model->sceneGraph->nodes)
+        {
+            for (const uint32_t voxelMeshIndex : node.voxelMeshes)
+            {
+                _sceneInformation.filledVoxelPrimitivesCount += model->sceneGraph->voxelMeshes[voxelMeshIndex].filledVoxelCount;
+            }
+        }
     }
     _lssSupported = _vulkanContext->IsExtensionSupported(VK_NV_RAY_TRACING_LINEAR_SWEPT_SPHERES_EXTENSION_NAME);
 }
@@ -37,6 +44,7 @@ void Editor::Update()
     ImGui::Indent(INDENT_SPACING);
     ImGui::Text("Triangle Count: %u", _sceneInformation.trianglePrimitivesCount);
     ImGui::Text("Curve Count: %u", _sceneInformation.curvePrimitivesCount);
+    ImGui::Text("Filled Voxel Count: %u", _sceneInformation.filledVoxelPrimitivesCount);
     ImGui::Text("LSS Count: %u", _sceneInformation.lssPrimitivesCount);
     ImGui::Indent(-INDENT_SPACING);
 

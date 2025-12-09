@@ -50,13 +50,12 @@ uint32_t Mesh::GetIndicesPerFaceNum() const
 }
 
 Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
+    : sceneGraph(creation.sceneGraph)
+    , vertexCount(creation.vertexBuffer.size())
+    , indexCount(creation.indexBuffer.size())
+    , curveCount(creation.curveBuffer.size())
+    , aabbCount(creation.aabbBuffer.size())
 {
-    sceneGraph = creation.sceneGraph;
-
-    vertexCount = creation.vertexBuffer.size();
-    indexCount = creation.indexBuffer.size();
-
-    // Upload to GPU
     if (vertexCount != 0 && indexCount != 0)
     {
         const size_t vertexBufferSize = sizeof(Mesh::Vertex) * vertexCount;
@@ -108,13 +107,9 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
         commands.SubmitAndWait();
     }
 
-    curveCount = creation.curveBuffer.size();
-    aabbCount = creation.aabbBuffer.size();
-
-    if (curveCount != 0 && aabbCount != 0)
+    if (curveCount != 0)
     {
         const size_t curveBufferSize = sizeof(Curve) * curveCount;
-        const size_t aabbBufferSize = sizeof(AABB) * aabbCount;
 
         // Staging buffers
         BufferCreation curveStagingBufferCreation {};
@@ -125,15 +120,6 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetSize(curveBufferSize);
         Buffer curveStagingBuffer(curveStagingBufferCreation, vulkanContext);
         memcpy(curveStagingBuffer.mappedPtr, creation.curveBuffer.data(), curveBufferSize);
-
-        BufferCreation aabbStagingBufferCreation {};
-        aabbStagingBufferCreation.SetName(sceneGraph->sceneName + " - AABB Staging Buffer")
-            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
-            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
-            .SetIsMappable(true)
-            .SetSize(aabbBufferSize);
-        Buffer aabbStagingBuffer(aabbStagingBufferCreation, vulkanContext);
-        memcpy(aabbStagingBuffer.mappedPtr, creation.aabbBuffer.data(), aabbBufferSize);
 
         // GPU buffers
         vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
@@ -146,6 +132,27 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
             .SetSize(curveBufferSize);
         curveBuffer = std::make_unique<Buffer>(curveBufferCreation, vulkanContext);
 
+        SingleTimeCommands commands(vulkanContext);
+        commands.Record([&](vk::CommandBuffer commandBuffer)
+            { VkCopyBufferToBuffer(commandBuffer, curveStagingBuffer.buffer, curveBuffer->buffer, curveBufferSize); });
+        commands.SubmitAndWait();
+    }
+
+    if (aabbCount != 0)
+    {
+        const size_t aabbBufferSize = sizeof(AABB) * aabbCount;
+
+        BufferCreation aabbStagingBufferCreation {};
+        aabbStagingBufferCreation.SetName(sceneGraph->sceneName + " - AABB Staging Buffer")
+            .SetUsageFlags(vk::BufferUsageFlagBits::eTransferSrc)
+            .SetMemoryUsage(VMA_MEMORY_USAGE_CPU_ONLY)
+            .SetIsMappable(true)
+            .SetSize(aabbBufferSize);
+        Buffer aabbStagingBuffer(aabbStagingBufferCreation, vulkanContext);
+        memcpy(aabbStagingBuffer.mappedPtr, creation.aabbBuffer.data(), aabbBufferSize);
+
+        vk::BufferUsageFlags bufferUsage = vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eAccelerationStructureBuildInputReadOnlyKHR | vk::BufferUsageFlagBits::eShaderDeviceAddress;
+
         BufferCreation aabbBufferCreation {};
         aabbBufferCreation.SetName(sceneGraph->sceneName + " - AABB Buffer")
             .SetUsageFlags(bufferUsage)
@@ -156,9 +163,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
 
         SingleTimeCommands commands(vulkanContext);
         commands.Record([&](vk::CommandBuffer commandBuffer)
-            {
-                VkCopyBufferToBuffer(commandBuffer, curveStagingBuffer.buffer, curveBuffer->buffer, curveBufferSize);
-                VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize); });
+            { VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize); });
         commands.SubmitAndWait();
     }
 
