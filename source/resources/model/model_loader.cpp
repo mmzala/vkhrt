@@ -155,6 +155,10 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
     mesh.primitiveType = GetPrimitiveType(aiMesh);
     mesh.firstIndex = static_cast<uint32_t>(indices.size());
     mesh.firstVertex = static_cast<uint32_t>(vertices.size());
+    mesh.boundingBox = AABB {
+        .min = glm::vec3(aiMesh->mAABB.mMin.x, aiMesh->mAABB.mMin.y, aiMesh->mAABB.mMin.z),
+        .max = glm::vec3(aiMesh->mAABB.mMax.x, aiMesh->mAABB.mMax.y, aiMesh->mAABB.mMax.z)
+    };
 
     if (aiMesh->HasFaces())
     {
@@ -284,7 +288,7 @@ std::shared_ptr<Model> ModelLoader::LoadFromFile(std::string_view path)
 {
     spdlog::info("[FILE] Loading model file {}", path);
 
-    const aiScene* aiScene = _importer.ReadFile({ path.begin(), path.end() }, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
+    const aiScene* aiScene = _importer.ReadFile({ path.begin(), path.end() }, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals | aiProcess_GenBoundingBoxes);
 
     if (!aiScene || aiScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !aiScene->mRootNode)
     {

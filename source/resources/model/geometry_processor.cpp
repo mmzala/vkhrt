@@ -1,4 +1,7 @@
 #include "resources/model/geometry_processor.hpp"
+
+#include <glm/ext/vector_ulp.hpp>
+#include <glm/gtx/optimum_pow.hpp>
 #include <glm/ext/scalar_constants.hpp>
 #include <spdlog/spdlog.h>
 
@@ -416,7 +419,7 @@ Mesh GenerateMeshGeometryTubes(const std::vector<Curve>& curves, std::vector<Mes
     return mesh;
 }
 
-std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius = 0.05f)
+std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRadius)
 {
     std::vector<AABB> aabbs(curves.size());
 
@@ -430,6 +433,172 @@ std::vector<AABB> GenerateAABBs(const std::vector<Curve>& curves, float curveRad
     }
 
     return aabbs;
+}
+
+glm::vec3 GetVoxelWorldPosition(uint32_t voxelIndex1D, const glm::vec3& voxelGridOrigin, const glm::ivec3& voxelGridResolution, float voxelSize)
+{
+    // Unflatten index
+    glm::vec3 voxelIndex3D {};
+    voxelIndex3D.z = voxelIndex1D / (voxelGridResolution.x * voxelGridResolution.y);
+    uint32_t remainder = voxelIndex1D % (voxelGridResolution.x * voxelGridResolution.y);
+    voxelIndex3D.y = remainder / voxelGridResolution.x;
+    voxelIndex3D.x = remainder % voxelGridResolution.x;
+
+    // Convert to world space
+    return voxelGridOrigin + voxelIndex3D * voxelSize;
+}
+
+std::vector<AABB> GenerateAABBs(const VoxelMesh& voxelMesh, const std::vector<bool>& voxels, float voxelSize)
+{
+    std::vector<AABB> aabbs(voxels.size());
+
+    for (uint32_t i = 0; i < voxels.size(); ++i)
+    {
+        if (!voxels[i])
+        {
+            continue;
+        }
+
+        glm::vec3 voxelWorldPosition = GetVoxelWorldPosition(i, voxelMesh.boundingBox.min, voxelMesh.voxelGridResolution, voxelSize);
+
+        AABB& aabb = aabbs[i];
+        aabb.min = voxelWorldPosition;
+        aabb.max = voxelWorldPosition + voxelSize;
+    }
+
+    return aabbs;
+}
+
+template <typename T, typename B>
+T NextDivisible(const T& dividend, const B divisor)
+{
+    return glm::ceil(dividend / divisor) * divisor;
+}
+
+glm::vec3 GetVoxelWorldPosition(const glm::vec3& worldPosition, float voxelSize)
+{
+    return glm::floor(worldPosition / voxelSize);
+}
+
+glm::ivec3 GetVoxelIndex3D(const glm::vec3& worldPosition, const glm::vec3& voxelGridOrigin, float voxelSize)
+{
+    return glm::floor((worldPosition - voxelGridOrigin) / voxelSize);
+}
+
+uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxelGridResolution)
+{
+    return voxelIndex3D.x + voxelIndex3D.y * voxelGridResolution.x + voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
+}
+
+std::array<uint8_t, 3> GetMajorAxes(const glm::vec3& v)
+{
+    glm::vec3 av = glm::abs(v);
+    std::array<uint8_t, 3> axes = { 0, 1, 2 };
+    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b)
+        { return av[a] > av[b]; });
+    return axes;
+}
+
+void FillVoxel(const glm::ivec3& index3D, VoxelMesh& mesh, std::vector<bool>& voxels)
+{
+    uint32_t index1D = GetVoxelIndex1D(index3D, mesh.voxelGridResolution);
+
+    if (index1D >= voxels.size())
+    {
+        return; // TODO: Look at this case as this should never happen
+    }
+
+    voxels[mesh.firstVoxel + index1D] = true;
+    mesh.filledVoxelCount++;
+}
+
+VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float hairRadius, float voxelSize, std::vector<bool>& voxels)
+{
+    VoxelMesh voxelMesh {};
+    voxelMesh.firstVoxel = voxels.size();
+    voxelMesh.boundingBox.min = meshBounds.min;
+    voxelMesh.boundingBox.max = meshBounds.max;
+
+    // Expand grid bounds until we can fit whole voxels inside
+    glm::vec3 voxelGridAreaDistance = voxelMesh.boundingBox.max - voxelMesh.boundingBox.min;
+    voxelGridAreaDistance = NextDivisible(voxelGridAreaDistance, voxelSize);
+    voxelMesh.boundingBox.max = voxelMesh.boundingBox.min + voxelGridAreaDistance;
+
+    // Set grid resolution
+    voxelMesh.voxelGridResolution = voxelGridAreaDistance / voxelSize;
+    const uint32_t numVoxels = voxelMesh.voxelGridResolution.x * voxelMesh.voxelGridResolution.y * voxelMesh.voxelGridResolution.z;
+    voxels.resize(voxels.size() + numVoxels);
+
+    spdlog::info("voxel grid size: {} with grid distance {}, {}, {}", voxels.size(), voxelGridAreaDistance.x, voxelGridAreaDistance.y, voxelGridAreaDistance.z);
+    spdlog::info("voxel grid res {}, {}, {}", voxelMesh.voxelGridResolution.x, voxelMesh.voxelGridResolution.y, voxelMesh.voxelGridResolution.z);
+    spdlog::info("voxel bounds {}, {}, {} to {}, {}, {}", voxelMesh.boundingBox.min.x, voxelMesh.boundingBox.min.y, voxelMesh.boundingBox.min.z, voxelMesh.boundingBox.max.x, voxelMesh.boundingBox.max.y, voxelMesh.boundingBox.max.z);
+
+    // Voxelize polylines as capsules
+    // Algorithm taken from 'Real-Time Rendering of Dynamic Line Sets using Voxel Ray Tracing' paper: https://arxiv.org/pdf/2510.09081
+    for (const Line& line : lines)
+    {
+        glm::vec3 d = line.end - line.start;
+        std::array<uint8_t, 3> a = GetMajorAxes(d);
+
+        // Make sure the major axis is always positive by swapping points
+        glm::vec3 v0 = d[a[0]] < 0.0f ? line.end : line.start;
+        glm::vec3 v1 = d[a[0]] < 0.0f ? line.start : line.end;
+
+        // Step vector from one major axis voxel boundary to the next
+        glm::vec3 s = d / d[a[0]];
+
+        // Get extended line segments to capture capsule ends
+        glm::vec3 sr = s * hairRadius;
+        glm::vec3 vr0 = v0 - sr;
+        glm::vec3 vr1 = v1 + sr;
+
+        // Get projected capsule radius on both minor axes
+        float dn = glm::length(d);
+        float r1 = hairRadius / glm::sqrt(1.0f - glm::pow2(d[a[1]] / dn));
+        float r2 = hairRadius / glm::sqrt(1.0f - glm::pow2(d[a[2]] / dn));
+
+        // Setup starting point for
+        float tmin = vr0[a[0]];
+        float tmax = vr1[a[0]];
+        float t0 = tmin;
+        glm::vec3 p0 = vr0;
+
+        while (t0 < tmax)
+        {
+            // Compute next intersection point
+            float t1 = glm::min(tmax, t0 + voxelSize); // TODO: Check if step is correct (voxelsize should be multiplied by s?)
+            glm::vec3 p1 = vr0 + s * (t1 - tmin);
+
+            // Define box to voxelize
+            glm::vec3 worldMin = glm::min(p0, p1);
+            glm::vec3 worldMax = glm::max(p0, p1);
+
+            worldMin[a[1]] -= r1;
+            worldMin[a[2]] -= r2;
+
+            worldMax[a[1]] += r1;
+            worldMax[a[2]] += r2;
+
+            glm::ivec3 minIndex = GetVoxelIndex3D(worldMin, voxelMesh.boundingBox.min, voxelSize);
+            glm::ivec3 maxIndex = GetVoxelIndex3D(worldMax, voxelMesh.boundingBox.min, voxelSize);
+
+            // Visit all voxels within box
+            for (int32_t j = minIndex.y; j <= maxIndex.y; ++j)
+            {
+                for (int32_t k = minIndex.z; k <= maxIndex.z; ++k)
+                {
+                    glm::ivec3 index = glm::ivec3(minIndex.x, j, k);
+                    FillVoxel(index, voxelMesh, voxels);
+                }
+            }
+
+            // Move to next intersection point
+            t0 = t1;
+            p0 = p1;
+        }
+    }
+
+    return voxelMesh;
 }
 
 ModelCreation ProcessHairCurves(const ModelCreation& modelCreation)
@@ -499,8 +668,6 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
     std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
-    std::vector<Mesh::Vertex> newVertexBuffer {};
-    std::vector<uint32_t> newIndexBuffer {};
 
     for (uint32_t meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
@@ -511,14 +678,62 @@ ModelCreation ProcessHairDOTS(const ModelCreation& modelCreation)
 
         // Create DOTS mesh from line segments
         Mesh& newMesh = newMeshes[meshIndex];
-        newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newVertexBuffer, newIndexBuffer, 0.02f);
+        newMesh = GenerateDisjointOrthogonalTriangleStrips(lines, newModelCreation.vertexBuffer, newModelCreation.indexBuffer, 0.02f);
         newMesh.material = oldMesh.material;
     }
 
     // Update geometry information in the model
     sceneGraph.meshes = newMeshes;
-    newModelCreation.vertexBuffer = newVertexBuffer;
-    newModelCreation.indexBuffer = newIndexBuffer;
+    return newModelCreation;
+}
+
+ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
+{
+    const auto it = std::find_if(modelCreation.sceneGraph->meshes.begin(), modelCreation.sceneGraph->meshes.end(), [](const Mesh& mesh)
+        { return mesh.primitiveType != Mesh::PrimitiveType::eLines; });
+    if (it != modelCreation.sceneGraph->meshes.end())
+    {
+        spdlog::error("[GEOMETRY PROCESSOR] Model \"{}\" contains multiple different mesh primitive types while trying to generate hair model!", modelCreation.sceneGraph->sceneName);
+        return modelCreation;
+    }
+
+    ModelCreation newModelCreation {};
+    newModelCreation.sceneGraph = modelCreation.sceneGraph;
+    SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
+
+    for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
+    {
+        const Mesh& oldMesh = sceneGraph.meshes[meshIndex];
+
+        // Create line segments from hair lines
+        const std::vector<Line> lines = GenerateLines(oldMesh, modelCreation.vertexBuffer, modelCreation.indexBuffer);
+
+        // Voxelize mesh
+        constexpr float voxelSize = 0.1f;
+        constexpr float hairRadius = 0.02f;
+
+        VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
+        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, hairRadius, voxelSize, newModelCreation.voxelGridBuffer);
+        newMesh.material = oldMesh.material;
+        newMesh.firstAabb = newModelCreation.aabbBuffer.size();
+
+        // Generate debug AABBs
+        const std::vector<AABB> aabbs = GenerateAABBs(newMesh, newModelCreation.voxelGridBuffer, voxelSize);
+        newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
+
+        // Update hair information
+        newMesh.aabbCount = aabbs.size();
+    }
+
+    // Update scene graph to use hair
+    sceneGraph.meshes.clear();
+
+    for (Node& node : sceneGraph.nodes)
+    {
+        node.voxelMeshes = node.meshes; // Since we don't support models with mixed voxel meshes and mesh geometry for now, we just copy the information
+        node.meshes.clear();
+    }
+
     return newModelCreation;
 }
 
@@ -578,8 +793,6 @@ ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
     SceneGraph& sceneGraph = *newModelCreation.sceneGraph;
 
     std::vector<Mesh> newMeshes(sceneGraph.meshes.size());
-    std::vector<Mesh::Vertex> newVertexBuffer {};
-    std::vector<uint32_t> newIndexBuffer {};
 
     for (int meshIndex = 0; meshIndex < sceneGraph.meshes.size(); ++meshIndex)
     {
@@ -593,13 +806,11 @@ ModelCreation ProcessHairDebugMesh(const ModelCreation& modelCreation)
 
         // Create mesh from curve segments
         Mesh& newMesh = newMeshes[meshIndex];
-        newMesh = GenerateMeshGeometryTubes(curves, newVertexBuffer, newIndexBuffer, 0.02f, 3, 3);
+        newMesh = GenerateMeshGeometryTubes(curves, newModelCreation.vertexBuffer, newModelCreation.indexBuffer, 0.02f, 3, 3);
         newMesh.material = oldMesh.material;
     }
 
     // Update geometry information in the model
     sceneGraph.meshes = newMeshes;
-    newModelCreation.vertexBuffer = newVertexBuffer;
-    newModelCreation.indexBuffer = newIndexBuffer;
     return newModelCreation;
 }

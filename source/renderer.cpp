@@ -7,6 +7,7 @@
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
 #include "vulkan_context.hpp"
+
 #include <backends/imgui_impl_vulkan.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -276,8 +277,11 @@ void Renderer::InitializeRayTracingPipeline()
     vk::ShaderModule missModule = Shader::CreateShaderModule("shaders/bin/miss.rmiss.spv", _vulkanContext->Device());
     vk::ShaderModule chitModule = Shader::CreateShaderModule("shaders/bin/triangle_closest_hit.rchit.spv", _vulkanContext->Device());
 
-    vk::ShaderModule chit2Module = Shader::CreateShaderModule("shaders/bin/hair_closest_hit.rchit.spv", _vulkanContext->Device());
-    vk::ShaderModule intModule = Shader::CreateShaderModule("shaders/bin/hair_intersection.rint.spv", _vulkanContext->Device());
+    vk::ShaderModule chitHairModule = Shader::CreateShaderModule("shaders/bin/hair_closest_hit.rchit.spv", _vulkanContext->Device());
+    vk::ShaderModule intHairModule = Shader::CreateShaderModule("shaders/bin/hair_intersection.rint.spv", _vulkanContext->Device());
+
+    vk::ShaderModule chitVoxelModule = Shader::CreateShaderModule("shaders/bin/voxel_closest_hit.rchit.spv", _vulkanContext->Device());
+    vk::ShaderModule intVoxelModule = Shader::CreateShaderModule("shaders/bin/voxel_intersection.rint.spv", _vulkanContext->Device());
 
     enum StageIndices
     {
@@ -285,11 +289,13 @@ void Renderer::InitializeRayTracingPipeline()
         eMiss,
         eClosestHit,
         eClosestHit2,
+        eClosestHit3,
         eIntersection,
-        eShaderGroupCount
+        eIntersection2,
+        eShaderStagesCount
     };
 
-    std::array<vk::PipelineShaderStageCreateInfo, eShaderGroupCount> shaderStagesCreateInfo {};
+    std::array<vk::PipelineShaderStageCreateInfo, eShaderStagesCount> shaderStagesCreateInfo {};
 
     vk::PipelineShaderStageCreateInfo& raygenStage = shaderStagesCreateInfo.at(eRaygen);
     raygenStage.stage = vk::ShaderStageFlagBits::eRaygenKHR;
@@ -306,17 +312,27 @@ void Renderer::InitializeRayTracingPipeline()
     chitStage.module = chitModule;
     chitStage.pName = "main";
 
-    vk::PipelineShaderStageCreateInfo& intStage = shaderStagesCreateInfo.at(eClosestHit2);
-    intStage.stage = vk::ShaderStageFlagBits::eClosestHitKHR;
-    intStage.module = chit2Module;
-    intStage.pName = "main";
+    vk::PipelineShaderStageCreateInfo& chitHairStage = shaderStagesCreateInfo.at(eClosestHit2);
+    chitHairStage.stage = vk::ShaderStageFlagBits::eClosestHitKHR;
+    chitHairStage.module = chitHairModule;
+    chitHairStage.pName = "main";
 
-    vk::PipelineShaderStageCreateInfo& chit2Stage = shaderStagesCreateInfo.at(eIntersection);
-    chit2Stage.stage = vk::ShaderStageFlagBits::eIntersectionKHR;
-    chit2Stage.module = intModule;
-    chit2Stage.pName = "main";
+    vk::PipelineShaderStageCreateInfo& intHairStage = shaderStagesCreateInfo.at(eIntersection);
+    intHairStage.stage = vk::ShaderStageFlagBits::eIntersectionKHR;
+    intHairStage.module = intHairModule;
+    intHairStage.pName = "main";
 
-    std::array<vk::RayTracingShaderGroupCreateInfoKHR, 4> shaderGroupsCreateInfo {};
+    vk::PipelineShaderStageCreateInfo& chitVoxelStage = shaderStagesCreateInfo.at(eClosestHit3);
+    chitVoxelStage.stage = vk::ShaderStageFlagBits::eClosestHitKHR;
+    chitVoxelStage.module = chitVoxelModule;
+    chitVoxelStage.pName = "main";
+
+    vk::PipelineShaderStageCreateInfo& intVoxelStage = shaderStagesCreateInfo.at(eIntersection2);
+    intVoxelStage.stage = vk::ShaderStageFlagBits::eIntersectionKHR;
+    intVoxelStage.module = intVoxelModule;
+    intVoxelStage.pName = "main";
+
+    std::array<vk::RayTracingShaderGroupCreateInfoKHR, 5> shaderGroupsCreateInfo {};
 
     vk::RayTracingShaderGroupCreateInfoKHR& group1 = shaderGroupsCreateInfo.at(0);
     group1.type = vk::RayTracingShaderGroupTypeKHR::eGeneral;
@@ -345,6 +361,13 @@ void Renderer::InitializeRayTracingPipeline()
     group4.closestHitShader = eClosestHit2;
     group4.anyHitShader = vk::ShaderUnusedKHR;
     group4.intersectionShader = eIntersection;
+
+    vk::RayTracingShaderGroupCreateInfoKHR& group5 = shaderGroupsCreateInfo.at(4);
+    group5.type = vk::RayTracingShaderGroupTypeKHR::eProceduralHitGroup;
+    group5.generalShader = vk::ShaderUnusedKHR;
+    group5.closestHitShader = eClosestHit3;
+    group5.anyHitShader = vk::ShaderUnusedKHR;
+    group5.intersectionShader = eIntersection2;
 
     std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout, _cameraResource->DescriptorSetLayout() };
 
@@ -382,8 +405,12 @@ void Renderer::InitializeRayTracingPipeline()
     _vulkanContext->Device().destroyShaderModule(raygenModule);
     _vulkanContext->Device().destroyShaderModule(missModule);
     _vulkanContext->Device().destroyShaderModule(chitModule);
-    _vulkanContext->Device().destroyShaderModule(chit2Module);
-    _vulkanContext->Device().destroyShaderModule(intModule);
+
+    _vulkanContext->Device().destroyShaderModule(chitHairModule);
+    _vulkanContext->Device().destroyShaderModule(intHairModule);
+
+    _vulkanContext->Device().destroyShaderModule(chitVoxelModule);
+    _vulkanContext->Device().destroyShaderModule(intVoxelModule);
 
     InitializeShaderBindingTable(pipelineCreateInfo);
 }
@@ -415,9 +442,10 @@ void Renderer::InitializeShaderBindingTable(const vk::RayTracingPipelineCreateIn
 
     std::vector<uint8_t> handles = _vulkanContext->Device().getRayTracingShaderGroupHandlesKHR<uint8_t>(_pipeline, 0, shaderGroupCount, sbtSize, _vulkanContext->Dldi());
 
+    constexpr uint32_t hitShaderCount = 3;
     memcpy(_raygenSBT->mappedPtr, handles.data(), handleSize);
     memcpy(_missSBT->mappedPtr, handles.data() + handleSizeAligned, handleSize);
-    memcpy(_hitSBT->mappedPtr, handles.data() + handleSizeAligned * 2, handleSize * 2);
+    memcpy(_hitSBT->mappedPtr, handles.data() + handleSizeAligned * 2, handleSize * hitShaderCount);
 
     _raygenAddressRegion.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_raygenSBT->buffer);
     _raygenAddressRegion.stride = handleSizeAligned;
@@ -429,7 +457,7 @@ void Renderer::InitializeShaderBindingTable(const vk::RayTracingPipelineCreateIn
 
     _hitAddressRegion.deviceAddress = _vulkanContext->GetBufferDeviceAddress(_hitSBT->buffer);
     _hitAddressRegion.stride = handleSizeAligned;
-    _hitAddressRegion.size = handleSizeAligned * 2;
+    _hitAddressRegion.size = handleSizeAligned * hitShaderCount;
 }
 
 void Renderer::InitializeImGuiPipeline()
@@ -568,6 +596,39 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     return output;
 }
 
+BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const VoxelMesh& voxelMesh, const std::shared_ptr<VulkanContext>& vulkanContext)
+{
+    BLASInput output {};
+    output.type = BLASType::eVoxels;
+    output.transform = node.GetWorldMatrix();
+
+    vk::DeviceOrHostAddressConstKHR aabbBufferDeviceAddress {};
+    aabbBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->aabbBuffer->buffer) + voxelMesh.firstAabb * sizeof(AABB);
+
+    vk::AccelerationStructureGeometryAabbsDataKHR aabbData {};
+    aabbData.data = aabbBufferDeviceAddress;
+    aabbData.stride = sizeof(AABB);
+
+    vk::AccelerationStructureGeometryKHR& accelerationStructureGeometry = output.geometry;
+    accelerationStructureGeometry.flags = vk::GeometryFlagBitsKHR::eOpaque;
+    accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eAabbs;
+    accelerationStructureGeometry.geometry.aabbs = aabbData;
+
+    const uint32_t primitiveCount = voxelMesh.aabbCount;
+
+    vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
+    buildRangeInfo.primitiveCount = primitiveCount;
+    buildRangeInfo.primitiveOffset = 0;
+    buildRangeInfo.firstVertex = 0;
+    buildRangeInfo.transformOffset = 0;
+
+    GeometryNodeCreation& nodeCreation = output.node;
+    nodeCreation.primitiveBufferDeviceAddress = vk::DeviceAddress {}; // TODO: Accel structure
+    nodeCreation.material = voxelMesh.material;
+
+    return output;
+}
+
 BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& node, const LSSMesh& lssMesh, const std::shared_ptr<VulkanContext>& vulkanContext)
 {
     BLASInput output {};
@@ -626,6 +687,12 @@ void Renderer::InitializeBLAS()
             for (const auto hair : node.hairs)
             {
                 BLASInput input = InitializeBLASInput(model, node, sceneGraph->hairs[hair], _vulkanContext);
+                _blases.emplace_back(input, _bindlessResources, _vulkanContext);
+            }
+
+            for (const auto voxelMesh : node.voxelMeshes)
+            {
+                BLASInput input = InitializeBLASInput(model, node, sceneGraph->voxelMeshes[voxelMesh], _vulkanContext);
                 _blases.emplace_back(input, _bindlessResources, _vulkanContext);
             }
 
