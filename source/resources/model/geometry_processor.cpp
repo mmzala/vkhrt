@@ -470,7 +470,7 @@ std::vector<AABB> GenerateAABBs(const VoxelMesh& voxelMesh, const std::vector<bo
     return aabbs;
 }
 
-template<typename T, typename B>
+template <typename T, typename B>
 T NextDivisible(const T& dividend, const B divisor)
 {
     return glm::ceil(dividend / divisor) * divisor;
@@ -488,16 +488,15 @@ glm::ivec3 GetVoxelIndex3D(const glm::vec3& worldPosition, const glm::vec3& voxe
 
 uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxelGridResolution)
 {
-    return voxelIndex3D.x +
-        voxelIndex3D.y * voxelGridResolution.x +
-        voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
+    return voxelIndex3D.x + voxelIndex3D.y * voxelGridResolution.x + voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
 }
 
 std::array<uint8_t, 3> GetMajorAxes(const glm::vec3& v)
 {
     glm::vec3 av = glm::abs(v);
-    std::array<uint8_t, 3> axes = {0, 1, 2};
-    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b) { return av[a] > av[b]; });
+    std::array<uint8_t, 3> axes = { 0, 1, 2 };
+    std::sort(axes.begin(), axes.end(), [&](uint8_t a, uint8_t b)
+        { return av[a] > av[b]; });
     return axes;
 }
 

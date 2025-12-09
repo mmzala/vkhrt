@@ -155,7 +155,7 @@ Mesh ProcessMesh(const aiScene* aiScene, const aiMesh* aiMesh, const std::vector
     mesh.primitiveType = GetPrimitiveType(aiMesh);
     mesh.firstIndex = static_cast<uint32_t>(indices.size());
     mesh.firstVertex = static_cast<uint32_t>(vertices.size());
-    mesh.boundingBox = AABB{
+    mesh.boundingBox = AABB {
         .min = glm::vec3(aiMesh->mAABB.mMin.x, aiMesh->mAABB.mMin.y, aiMesh->mAABB.mMin.z),
         .max = glm::vec3(aiMesh->mAABB.mMax.x, aiMesh->mAABB.mMax.y, aiMesh->mAABB.mMax.z)
     };

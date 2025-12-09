@@ -50,12 +50,11 @@ uint32_t Mesh::GetIndicesPerFaceNum() const
 }
 
 Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>& vulkanContext)
-    :
-    sceneGraph(creation.sceneGraph),
-    vertexCount(creation.vertexBuffer.size()),
-    indexCount(creation.indexBuffer.size()),
-    curveCount(creation.curveBuffer.size()),
-    aabbCount(creation.aabbBuffer.size())
+    : sceneGraph(creation.sceneGraph)
+    , vertexCount(creation.vertexBuffer.size())
+    , indexCount(creation.indexBuffer.size())
+    , curveCount(creation.curveBuffer.size())
+    , aabbCount(creation.aabbBuffer.size())
 {
     if (vertexCount != 0 && indexCount != 0)
     {
@@ -135,9 +134,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
 
         SingleTimeCommands commands(vulkanContext);
         commands.Record([&](vk::CommandBuffer commandBuffer)
-            {
-                VkCopyBufferToBuffer(commandBuffer, curveStagingBuffer.buffer, curveBuffer->buffer, curveBufferSize);
-            });
+            { VkCopyBufferToBuffer(commandBuffer, curveStagingBuffer.buffer, curveBuffer->buffer, curveBufferSize); });
         commands.SubmitAndWait();
     }
 
@@ -166,9 +163,7 @@ Model::Model(const ModelCreation& creation, const std::shared_ptr<VulkanContext>
 
         SingleTimeCommands commands(vulkanContext);
         commands.Record([&](vk::CommandBuffer commandBuffer)
-            {
-                VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize);
-            });
+            { VkCopyBufferToBuffer(commandBuffer, aabbStagingBuffer.buffer, aabbBuffer->buffer, aabbBufferSize); });
         commands.SubmitAndWait();
     }
 

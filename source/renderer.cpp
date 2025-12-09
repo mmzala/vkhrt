@@ -694,8 +694,8 @@ void Renderer::InitializeBLAS()
             for (const auto voxelMesh : node.voxelMeshes)
             {
                 BLASInput input = InitializeBLASInput(model, node, sceneGraph->voxelMeshes[voxelMesh], _vulkanContext);
-				_blases.emplace_back(input, _bindlessResources, _vulkanContext);
-			}
+                _blases.emplace_back(input, _bindlessResources, _vulkanContext);
+            }
 
             for (const auto lssMesh : node.lssMeshes)
             {
