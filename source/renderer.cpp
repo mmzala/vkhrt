@@ -1,5 +1,4 @@
 #include "renderer.hpp"
-#include "../build/x64-Release/_deps/spdlog-src/include/spdlog/spdlog.h"
 #include "fly_camera.hpp"
 #include "resources/bindless_resources.hpp"
 #include "resources/camera_resource.hpp"
