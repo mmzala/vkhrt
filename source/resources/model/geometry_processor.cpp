@@ -487,7 +487,7 @@ glm::ivec3 GetVoxelIndex3D(const glm::vec3& worldPosition, const glm::vec3& voxe
 
 uint32_t GetVoxelIndex1D(const glm::ivec3& voxelIndex3D, const glm::ivec3& voxelGridResolution)
 {
-    return voxelIndex3D.x + voxelIndex3D.y * voxelGridResolution.x + voxelIndex3D.z * (voxelGridResolution.x * voxelGridResolution.y);
+    return voxelIndex3D.x + voxelIndex3D.y * voxelGridResolution.x + voxelIndex3D.z * voxelGridResolution.x * voxelGridResolution.y;
 }
 
 std::array<uint8_t, 3> GetMajorAxes(const glm::vec3& v)
