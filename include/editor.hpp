@@ -21,6 +21,7 @@ private:
         uint32_t trianglePrimitivesCount;
         uint32_t curvePrimitivesCount;
         uint32_t lssPrimitivesCount;
+        uint32_t voxelBricksCount;
     } _sceneInformation {};
     bool _lssSupported = false;
 
