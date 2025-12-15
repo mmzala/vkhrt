@@ -20,7 +20,6 @@ private:
     {
         uint32_t trianglePrimitivesCount;
         uint32_t curvePrimitivesCount;
-        uint32_t filledVoxelPrimitivesCount;
         uint32_t lssPrimitivesCount;
     } _sceneInformation {};
     bool _lssSupported = false;

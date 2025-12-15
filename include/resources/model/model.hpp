@@ -1,5 +1,6 @@
 #pragma once
 #include "resources/gpu_resources.hpp"
+#include "brickmap.hpp"
 #include <glm/vec3.hpp>
 #include <glm/matrix.hpp>
 
@@ -78,14 +79,13 @@ struct Hair
 struct VoxelMesh
 {
     glm::ivec3 voxelGridResolution {};
-    uint32_t firstVoxel {};
-    uint32_t filledVoxelCount {};
 
-    uint32_t aabbCount {};
-    uint32_t firstAabb {};
+    uint32_t firstBrickIndex {};
+    uint32_t firstBrickIndexIndex {};
 
+    uint32_t aabbIndex {};
     AABB boundingBox {};
-	ResourceHandle<Material> material {};
+    ResourceHandle<Material> material {};
 };
 
 struct LSSMesh
@@ -116,11 +116,13 @@ struct ModelCreation
     std::vector<uint32_t> indexBuffer {};
 
     std::vector<Curve> curveBuffer {};
-    std::vector<bool> voxelGridBuffer {};
     std::vector<AABB> aabbBuffer {};
 
     std::vector<glm::vec3> lssPositionBuffer {};
     std::vector<float> lssRadiusBuffer {};
+
+    std::vector<Brick> voxelBrickBuffer {};
+    std::vector<uint32_t> voxelBrickIndexBuffer {};
 
     std::shared_ptr<SceneGraph> sceneGraph {};
 };
@@ -135,14 +137,20 @@ struct Model
     uint32_t indexCount {};
 
     std::unique_ptr<Buffer> curveBuffer {};
-    std::unique_ptr<Buffer> aabbBuffer {};
     uint32_t curveCount {};
-    uint32_t aabbCount {};
 
     std::unique_ptr<Buffer> lssPositionBuffer {};
     std::unique_ptr<Buffer> lssRadiusBuffer {};
     uint32_t lssPositionCount {};
     uint32_t lssRadiusCount {};
+
+    std::unique_ptr<Buffer> voxelBrickBuffer {};
+    std::unique_ptr<Buffer> voxelBrickIndexBuffer {};
+    uint32_t voxelBrickCount {};
+    uint32_t voxelBrickIndexCount {};
+
+    std::unique_ptr<Buffer> aabbBuffer {};
+    uint32_t aabbCount {};
 
     std::shared_ptr<SceneGraph> sceneGraph {};
 };

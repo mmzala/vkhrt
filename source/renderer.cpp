@@ -603,7 +603,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     output.transform = node.GetWorldMatrix();
 
     vk::DeviceOrHostAddressConstKHR aabbBufferDeviceAddress {};
-    aabbBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->aabbBuffer->buffer) + voxelMesh.firstAabb * sizeof(AABB);
+    aabbBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->aabbBuffer->buffer) + voxelMesh.aabbIndex * sizeof(AABB);
 
     vk::AccelerationStructureGeometryAabbsDataKHR aabbData {};
     aabbData.data = aabbBufferDeviceAddress;
@@ -614,7 +614,7 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     accelerationStructureGeometry.geometryType = vk::GeometryTypeKHR::eAabbs;
     accelerationStructureGeometry.geometry.aabbs = aabbData;
 
-    const uint32_t primitiveCount = voxelMesh.aabbCount;
+    constexpr uint32_t primitiveCount = 1; // Voxel meshes have one AABB and are traversed manually using a brickmap
 
     vk::AccelerationStructureBuildRangeInfoKHR& buildRangeInfo = output.info;
     buildRangeInfo.primitiveCount = primitiveCount;
@@ -622,8 +622,14 @@ BLASInput InitializeBLASInput(const std::shared_ptr<Model>& model, const Node& n
     buildRangeInfo.firstVertex = 0;
     buildRangeInfo.transformOffset = 0;
 
+    vk::DeviceOrHostAddressConstKHR brickBufferDeviceAddress {};
+    vk::DeviceOrHostAddressConstKHR brickIndexBufferDeviceAddress {};
+    brickBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->voxelBrickBuffer->buffer) + voxelMesh.firstBrickIndex * sizeof(Brick);
+    brickIndexBufferDeviceAddress.deviceAddress = vulkanContext->GetBufferDeviceAddress(model->voxelBrickBuffer->buffer) + voxelMesh.firstBrickIndexIndex * sizeof(uint32_t);
+
     GeometryNodeCreation& nodeCreation = output.node;
-    nodeCreation.primitiveBufferDeviceAddress = vk::DeviceAddress {}; // TODO: Accel structure
+    nodeCreation.primitiveBufferDeviceAddress = brickBufferDeviceAddress.deviceAddress;
+    nodeCreation.indexBufferDeviceAddress = brickIndexBufferDeviceAddress.deviceAddress;
     nodeCreation.material = voxelMesh.material;
 
     return output;

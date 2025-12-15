@@ -508,14 +508,12 @@ void FillVoxel(const glm::ivec3& index3D, VoxelMesh& mesh, std::vector<bool>& vo
         return; // TODO: Look at this case as this should never happen
     }
 
-    voxels[mesh.firstVoxel + index1D] = true;
-    mesh.filledVoxelCount++;
+    voxels[index1D] = true;
 }
 
 VoxelMesh GenerateVoxelMesh(const std::vector<Line>& lines, const AABB& meshBounds, float hairRadius, float voxelSize, std::vector<bool>& voxels)
 {
     VoxelMesh voxelMesh {};
-    voxelMesh.firstVoxel = voxels.size();
     voxelMesh.boundingBox.min = meshBounds.min;
     voxelMesh.boundingBox.max = meshBounds.max;
 
@@ -712,17 +710,24 @@ ModelCreation ProcessHairVoxels(const ModelCreation& modelCreation)
         constexpr float voxelSize = 0.1f;
         constexpr float hairRadius = 0.02f;
 
+        std::vector<bool> voxels {};
         VoxelMesh& newMesh = sceneGraph.voxelMeshes.emplace_back();
-        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, hairRadius, voxelSize, newModelCreation.voxelGridBuffer);
+        newMesh = GenerateVoxelMesh(lines, oldMesh.boundingBox, hairRadius, voxelSize, voxels);
         newMesh.material = oldMesh.material;
-        newMesh.firstAabb = newModelCreation.aabbBuffer.size();
 
-        // Generate debug AABBs
-        const std::vector<AABB> aabbs = GenerateAABBs(newMesh, newModelCreation.voxelGridBuffer, voxelSize);
-        newModelCreation.aabbBuffer.insert(newModelCreation.aabbBuffer.end(), aabbs.begin(), aabbs.end());
+        // Generate brickmap out of voxel grid
+        newMesh.firstBrickIndex = newModelCreation.voxelBrickBuffer.size();
+        newMesh.firstBrickIndexIndex = newModelCreation.voxelBrickIndexBuffer.size();
 
-        // Update hair information
-        newMesh.aabbCount = aabbs.size();
+        Brickmap brickmap = Brickmap(newMesh.voxelGridResolution.x, newMesh.voxelGridResolution.y, newMesh.voxelGridResolution.z);
+        brickmap.Build(voxels);
+
+        newModelCreation.voxelBrickBuffer.insert(newModelCreation.voxelBrickBuffer.end(), brickmap.GetBricks().begin(), brickmap.GetBricks().end());
+        newModelCreation.voxelBrickIndexBuffer.insert(newModelCreation.voxelBrickIndexBuffer.end(), brickmap.GetBrickIndices().begin(), brickmap.GetBrickIndices().end());
+
+        // Get mesh AABB for ray-mesh intersection
+        newMesh.aabbIndex = newModelCreation.aabbBuffer.size();
+        newModelCreation.aabbBuffer.push_back(oldMesh.boundingBox);
     }
 
     // Update scene graph to use hair
