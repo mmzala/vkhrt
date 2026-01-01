@@ -25,6 +25,7 @@ void VkCopyImageToImage(vk::CommandBuffer commandBuffer, vk::Image srcImage, vk:
 void VkCopyBufferToImage(vk::CommandBuffer commandBuffer, vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
 void VkCopyBufferToBuffer(vk::CommandBuffer commandBuffer, vk::Buffer srcBuffer, vk::Buffer dstBuffer, vk::DeviceSize size, uint32_t offset = 0);
 VkTransformMatrixKHR VkGLMToTransformMatrixKHR(const glm::mat4& matrix);
+bool VkIsFloatingPoint(vk::Format format);
 
 template <typename T>
 static void VkNameObject(T object, std::string_view name, const std::shared_ptr<VulkanContext>& context)
