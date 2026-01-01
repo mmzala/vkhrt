@@ -67,6 +67,7 @@ private:
     std::vector<std::shared_ptr<Model>> _models {};
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
+    ResourceHandle<Image> _environmentMap;
 
     vk::DescriptorSetLayout _descriptorSetLayout;
     vk::DescriptorSet _descriptorSet;

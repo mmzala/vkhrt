@@ -3,6 +3,7 @@
 #include "resources/bindless_resources.hpp"
 #include "resources/camera_resource.hpp"
 #include "resources/model/model_loader.hpp"
+#include "resources/file_io.hpp"
 #include "shader.hpp"
 #include "swap_chain.hpp"
 #include "top_level_acceleration_structure.hpp"
@@ -28,6 +29,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
     _modelLoader = std::make_unique<ModelLoader>(_bindlessResources, _vulkanContext);
     _cameraResource = std::make_unique<CameraResource>(_vulkanContext);
 
+    // Initialize scene models
     const std::vector<std::string> scene = {
         "assets/claire/Claire_HairMain_less_strands.gltf",
         "assets/claire/Claire_PonyTail.gltf",
@@ -38,8 +40,20 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
         _models.emplace_back(_modelLoader->LoadFromFile(modelPath));
     }
     InitializeBLAS();
-
     _tlas = std::make_unique<TopLevelAccelerationStructure>(_blases, _bindlessResources, _vulkanContext);
+
+    // Initialize scene environment map
+    int32_t width {}, height {}, nrChannels {};
+    std::vector<std::byte> environmentMapData = LoadFloatImageFromFile("assets/qwantani_sunset_puresky_4k.hdr", width, height, nrChannels);
+
+    ImageCreation environmentMapCreation {};
+    environmentMapCreation.SetName("Environment Map")
+        .SetData(environmentMapData)
+        .SetSize(width, height)
+        .SetFormat(vk::Format::eR32G32B32A32Sfloat)
+        .SetUsageFlags(vk::ImageUsageFlagBits::eSampled);
+    _environmentMap = _bindlessResources->Images().Create(environmentMapCreation);
+
     _bindlessResources->UpdateDescriptorSet();
 
     InitializeDescriptorSets();
