@@ -53,6 +53,7 @@ Renderer::Renderer(const VulkanInitInfo& initInfo, const std::shared_ptr<VulkanC
         .SetFormat(vk::Format::eR32G32B32A32Sfloat)
         .SetUsageFlags(vk::ImageUsageFlagBits::eSampled);
     _environmentMap = _bindlessResources->Images().Create(environmentMapCreation);
+    _pushConstantData.environmentMapIndex = _environmentMap.handle;
 
     _bindlessResources->UpdateDescriptorSet();
 
@@ -158,6 +159,7 @@ void Renderer::RecordRayTracingCommands(const vk::CommandBuffer& commandBuffer, 
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 0, _bindlessResources->DescriptorSet(), nullptr);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 1, _descriptorSet, nullptr);
     commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eRayTracingKHR, _pipelineLayout, 2, _cameraResource->DescriptorSet(currentResourceFrame), nullptr);
+    commandBuffer.pushConstants(_pipelineLayout, vk::ShaderStageFlagBits::eMissKHR, 0, sizeof(PushConstantData), &_pushConstantData);
 
     vk::StridedDeviceAddressRegionKHR callableShaderSbtEntry {};
     commandBuffer.traceRaysKHR(_raygenAddressRegion, _missAddressRegion, _hitAddressRegion, callableShaderSbtEntry, _windowWidth, _windowHeight, 1, _vulkanContext->Dldi());
@@ -385,11 +387,16 @@ void Renderer::InitializeRayTracingPipeline()
 
     std::array<vk::DescriptorSetLayout, 3> descriptorSetLayouts { _bindlessResources->DescriptorSetLayout(), _descriptorSetLayout, _cameraResource->DescriptorSetLayout() };
 
+    vk::PushConstantRange pushConstantRange {};
+    pushConstantRange.offset = 0;
+    pushConstantRange.size = sizeof(PushConstantData);
+    pushConstantRange.stageFlags = vk::ShaderStageFlagBits::eMissKHR;
+
     vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo {};
     pipelineLayoutCreateInfo.setLayoutCount = descriptorSetLayouts.size();
     pipelineLayoutCreateInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-    pipelineLayoutCreateInfo.pPushConstantRanges = nullptr;
+    pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+    pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
     _pipelineLayout = _vulkanContext->Device().createPipelineLayout(pipelineLayoutCreateInfo);
 
     vk::PipelineLibraryCreateInfoKHR libraryCreateInfo {};

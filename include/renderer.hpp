@@ -90,4 +90,9 @@ private:
 
     uint32_t _windowWidth = 0;
     uint32_t _windowHeight = 0;
+
+    struct PushConstantData
+    {
+        uint32_t environmentMapIndex {};
+    } _pushConstantData {};
 };
