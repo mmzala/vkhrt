@@ -1,7 +1,7 @@
 #include "resources/model/model_loader.hpp"
 #include "resources/bindless_resources.hpp"
-#include "resources/model/geometry_processor.hpp"
 #include "resources/file_io.hpp"
+#include "resources/model/geometry_processor.hpp"
 #include "vk_common.hpp"
 #include <assimp/GltfMaterial.h>
 #include <assimp/postprocess.h>

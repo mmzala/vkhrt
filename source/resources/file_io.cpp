@@ -1,6 +1,6 @@
 #include "resources/file_io.hpp"
-#include <stb_image.h>
 #include <spdlog/spdlog.h>
+#include <stb_image.h>
 
 std::vector<std::byte> LoadImageFromFile(const std::string& path, int32_t& width, int32_t& height, int32_t& nrChannels, int32_t desiredChannels)
 {
