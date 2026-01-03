@@ -27,6 +27,12 @@ void main()
     vec3 dir = normalize(-gl_WorldRayDirectionEXT); // Invert environment map
     vec2 uv = DirectionToUV(dir);
 
-    vec4 environmentColor = texture(textures[nonuniformEXT(environmentMapIndex)], uv);
-    payload.hitValue = environmentColor.rgb;
+    const float gamma = 2.2;
+    const float exposure = 1.0;
+
+    vec3 environmentColor = texture(textures[nonuniformEXT(environmentMapIndex)], uv).rgb;
+    environmentColor = vec3(1.0) - exp(-environmentColor * exposure);
+    environmentColor = pow(environmentColor, vec3(1.0 / gamma));
+
+    payload.hitValue = environmentColor;
 }
