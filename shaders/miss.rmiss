@@ -12,23 +12,20 @@ layout(push_constant) uniform PushConstants
 };
 
 #define PI 3.1415926538
+#define M_1_OVER_PI 0.3183098861837
 
-vec2 DirectionToEquirectUV(vec3 dir)
+vec2 DirectionToUV(vec3 v)
 {
-    float phi = atan(dir.z, dir.x);
-    float theta = acos(clamp(dir.y, -1.0, 1.0));
+    float gamma = asin(v.y);
+    float theta = atan(v.x, -v.z);
 
-    vec2 uv;
-    uv.x = (phi + PI) / (2.0 * PI);
-    uv.y = theta / PI;
-
-    return uv;
+    return vec2(theta * M_1_OVER_PI * 0.5, gamma * M_1_OVER_PI) + 0.5;
 }
 
 void main()
 {
-    vec3 dir = normalize(gl_WorldRayDirectionEXT);
-    vec2 uv = DirectionToEquirectUV(dir);
+    vec3 dir = normalize(-gl_WorldRayDirectionEXT); // Invert environment map
+    vec2 uv = DirectionToUV(dir);
 
     vec4 environmentColor = texture(textures[nonuniformEXT(environmentMapIndex)], uv);
     payload.hitValue = environmentColor.rgb;
