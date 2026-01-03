@@ -1,8 +1,8 @@
 #include "resources/model/geometry_processor.hpp"
 
+#include <glm/ext/scalar_constants.hpp>
 #include <glm/ext/vector_ulp.hpp>
 #include <glm/gtx/optimum_pow.hpp>
-#include <glm/ext/scalar_constants.hpp>
 #include <spdlog/spdlog.h>
 
 static const std::vector<uint32_t> CUBE_INDICES {

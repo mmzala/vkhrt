@@ -1,5 +1,6 @@
 #include "resources/model/model_loader.hpp"
 #include "resources/bindless_resources.hpp"
+#include "resources/file_io.hpp"
 #include "resources/model/geometry_processor.hpp"
 #include "vk_common.hpp"
 #include <assimp/GltfMaterial.h>
@@ -8,7 +9,6 @@
 #include <filesystem>
 #include <glm/gtc/type_ptr.hpp>
 #include <spdlog/spdlog.h>
-#include <stb_image.h>
 
 Mesh::PrimitiveType GetPrimitiveType(const aiMesh* aiMesh)
 {
@@ -27,29 +27,16 @@ Mesh::PrimitiveType GetPrimitiveType(const aiMesh* aiMesh)
 
 ResourceHandle<Image> ProcessImage(const std::string_view localPath, const std::string_view directory, const std::shared_ptr<BindlessResources>& resources)
 {
+    const std::string fullPath = std::string(directory) + "/" + std::string { localPath.begin(), localPath.end() };
+    int32_t width {}, height {}, nrChannels {};
+    std::vector<std::byte> imageData = LoadImageFromFile(fullPath, width, height, nrChannels);
+
     ImageCreation imageCreation {};
     imageCreation.SetName(localPath)
+        .SetData(imageData)
+        .SetSize(width, height)
         .SetFormat(vk::Format::eR8G8B8A8Unorm)
         .SetUsageFlags(vk::ImageUsageFlagBits::eSampled);
-
-    int32_t width {}, height {}, nrChannels {};
-
-    const std::string fullPath = std::string(directory) + "/" + std::string { localPath.begin(), localPath.end() };
-
-    unsigned char* stbiData = stbi_load(fullPath.c_str(), &width, &height, &nrChannels, 4);
-
-    if (!stbiData)
-    {
-        spdlog::error("[MODEL LOADING] Failed to load data from image [{}] from path [{}]", imageCreation.name, fullPath);
-        return ResourceHandle<Image> {};
-    }
-
-    std::vector<std::byte> data = std::vector<std::byte>(width * height * 4);
-    std::memcpy(data.data(), std::bit_cast<std::byte*>(stbiData), data.size());
-    stbi_image_free(stbiData);
-
-    imageCreation.SetSize(width, height)
-        .SetData(data);
 
     return resources->Images().Create(imageCreation);
 }

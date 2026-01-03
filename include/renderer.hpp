@@ -67,6 +67,7 @@ private:
     std::vector<std::shared_ptr<Model>> _models {};
     std::vector<BottomLevelAccelerationStructure> _blases {};
     std::unique_ptr<TopLevelAccelerationStructure> _tlas;
+    ResourceHandle<Image> _environmentMap;
 
     vk::DescriptorSetLayout _descriptorSetLayout;
     vk::DescriptorSet _descriptorSet;
@@ -89,4 +90,9 @@ private:
 
     uint32_t _windowWidth = 0;
     uint32_t _windowHeight = 0;
+
+    struct PushConstantData
+    {
+        uint32_t environmentMapIndex {};
+    } _pushConstantData {};
 };

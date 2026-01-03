@@ -239,7 +239,7 @@ void BindlessResources::InitializeSet()
     combinedImageSampler.descriptorType = vk::DescriptorType::eCombinedImageSampler;
     combinedImageSampler.descriptorCount = MAX_RESOURCES;
     combinedImageSampler.binding = static_cast<uint32_t>(BindlessBinding::eImages);
-    combinedImageSampler.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR;
+    combinedImageSampler.stageFlags = vk::ShaderStageFlagBits::eClosestHitKHR | vk::ShaderStageFlagBits::eMissKHR;
 
     vk::DescriptorSetLayoutBinding& materialBinding = bindings[1];
     materialBinding.descriptorType = vk::DescriptorType::eUniformBuffer;

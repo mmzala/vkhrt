@@ -249,6 +249,11 @@ Image::Image(const ImageCreation& creation, const std::shared_ptr<VulkanContext>
     {
         vk::DeviceSize imageSize = creation.width * creation.height * 4;
 
+        if (VkIsFloatingPoint(format))
+        {
+            imageSize *= sizeof(float);
+        }
+
         BufferCreation stagingBufferCreation {};
         stagingBufferCreation.SetName("Image staging buffer")
             .SetSize(imageSize)

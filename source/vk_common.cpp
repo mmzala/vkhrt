@@ -215,3 +215,16 @@ VkTransformMatrixKHR VkGLMToTransformMatrixKHR(const glm::mat4& matrix)
     memcpy(&out, &temp, sizeof(VkTransformMatrixKHR));
     return out;
 }
+
+bool VkIsFloatingPoint(vk::Format format)
+{
+    switch (format)
+    {
+    case vk::Format::eR32G32B32A32Sfloat:
+        return true;
+    default:
+        return false;
+    }
+
+    return false;
+}
