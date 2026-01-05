@@ -7,6 +7,7 @@
 #include "bindless.glsl"
 #include "ray.glsl"
 #include "primitives.glsl"
+#include "shading.glsl"
 #include "debug.glsl"
 
 layout(buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Vertices { Vertex vertices[]; };
@@ -79,5 +80,6 @@ void main()
         albedo *= texture(textures[nonuniformEXT(material.albedoMapIndex)], geometry.texCoord);
     }
 
+    vec3 color = Shade(geometry.normal);
     payload.hitValue = GetDebugColor(gl_PrimitiveID);
 }
