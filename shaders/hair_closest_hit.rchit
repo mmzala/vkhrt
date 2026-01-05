@@ -6,6 +6,7 @@
 #include "bindless.glsl"
 #include "ray.glsl"
 #include "primitives.glsl"
+#include "shading.glsl"
 #include "debug.glsl"
 
 layout(location = 0) rayPayloadInEXT HitPayload payload;
@@ -18,13 +19,7 @@ void main()
     Material material = materials[nonuniformEXT(geometryNode.materialIndex)];
 
     vec3 normal = attribNormal;
-
-    vec3 lightColor = vec3(0.4, 0.2, 0.1);
-    vec3 lightDirection = vec3(0.0, -1.0, 0.0);
-    vec3 ambientColor = vec3(0.3);
-
-    vec3 color = abs(dot(normal, lightDirection)) * lightColor;
-    color += ambientColor;
+    vec3 color = Shade(normal);
 
     payload.hitValue = GetDebugColor(gl_PrimitiveID);
 }
