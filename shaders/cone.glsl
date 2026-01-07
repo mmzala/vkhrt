@@ -41,7 +41,7 @@ RayConeIntersection RayConeIntersectRCC(Cone cone)
 
     // dr2 adjustments
     // It does not help much with neither accuracy nor performance
-/*
+    /*
     float qs = (dr * dr) / ddd;
     a -= qs * cdd * cdd;
     b -= qs * cone.axis.z * cdd;
@@ -51,12 +51,12 @@ RayConeIntersection RayConeIntersectRCC(Cone cone)
     float det = b * b - a * c;
 
     RayConeIntersection result;
-    result.isIntersection = det > 0.0;                      // true (real) or false (phantom)
-    result.s = (b - (det < 0.0 ? sqrt(det) : 0)) / c;       // ray.s − c0.z for ray ∩ cone(t)
-    result.dt = (result.s * cone.axis.z - cdd) / ddd;       // dt to the (ray ∩ cone) from t
-    result.dc = result.s * result.s + dp;                   // |(ray ∩ cone(t)) - curve(t)|2
-    result.sp = cdd / cone.axis.z;                          //  ray.s − c0.z for ray ∩ plane(t)
-    result.dp = dp + result.sp * result.sp;                 // |(ray ∩ plane(t)) - curve(t)|2
+    result.isIntersection = det > 0.0;                                  // true (real) or false (phantom)
+    result.s = (b - (result.isIntersection ? sqrt(det) : 0)) / c;       // ray.s − c0.z for ray ∩ cone(t)
+    result.dt = (result.s * cone.axis.z - cdd) / ddd;                   // dt to the (ray ∩ cone) from t
+    result.dc = result.s * result.s + dp;                               // |(ray ∩ cone(t)) - curve(t)|2
+    result.sp = cdd / cone.axis.z;                                      //  ray.s − c0.z for ray ∩ plane(t)
+    result.dp = dp + result.sp * result.sp;                             // |(ray ∩ plane(t)) - curve(t)|2
 
     return result;
 }
